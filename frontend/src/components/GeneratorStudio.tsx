@@ -87,7 +87,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated }: Gene
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/generate-all', {
+      const response = await fetch('http://127.0.0.1:8001/api/generate-all', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated }: Gene
       }
     } catch (e) {
       console.error(e);
-      alert("Error contacting API backend. Please ensure uvicorn server is running on localhost:8000.");
+      alert("Error contacting API backend. Please ensure uvicorn server is running on localhost:8001.");
     } finally {
       setLoading(false);
     }
@@ -139,7 +139,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated }: Gene
     const file_base = featureName.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'test';
     const filename = `${file_base}.feature`;
     
-    fetch("http://127.0.0.1:8000/api/download/file", {
+    fetch("http://127.0.0.1:8001/api/download/file", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -171,7 +171,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated }: Gene
     const filename = activeCodeTab === 'page' ? pageFilename : specFilename;
     const content = activeCodeTab === 'page' ? pageCode : specCode;
     
-    fetch("http://127.0.0.1:8000/api/download/file", {
+    fetch("http://127.0.0.1:8001/api/download/file", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

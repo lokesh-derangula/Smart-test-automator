@@ -1,87 +1,258 @@
-# SpecFlowAI: AI-Powered Test Case Generation & Automation Platform
-
-Welcome to **SpecFlowAI**, an advanced enterprise-grade full-stack platform designed to automate BDD test case generation and produce ready-to-run Playwright TypeScript scripts using Page Object Model (POM) design patterns.
-
----
-
-## 🚀 Key Features
-
-1. **AI Test Generation Studio:** Convert Agile User Stories and Acceptance Criteria into Gherkin BDD features and maintainable Playwright POM scripts.
-2. **Dual-Model Inference Engine:** Uses offline rule-based heuristic tokenizers or leverages OpenAI's GPT-4 APIs.
-3. **NLP Pipeline & Preprocessing View:** Tabular part-of-speech (POS) tagging details mapped out step-by-step.
-4. **T5 Fine-Tuning Studio:** Fine-tune translation models using uploaded custom training data.
-5. **Playwright Parallel Runner Simulator:** Runs tests concurrently on emulated Chromium, Firefox, and WebKit browser threads.
-6. **Production Configs:** Custom Docker-Compose scripts and GitHub Actions workflows for continuous integration.
+# } SpecFlowAI
+### Enterprise AI-Powered Test Case Generation & Parallel Automation Runner
+> A premium, production-grade test intelligence platform. Harness fine-tuned Hugging Face T5 translation models, GPT-4, and custom NLP parsers to instantly convert Agile User Stories into clean Gherkin BDD specifications and generate ready-to-run Playwright Page Object Model (POM) automation suites.
 
 ---
 
-## ⚙️ Model Training & Fine-Tuning Dataset Requirements
+## 🎨 Visual Showcase & Application Screenshots
 
-The T5 Model Fine-Tuning Studio requires uploading a training dataset. Training cannot be started without a valid file.
+### 1. Unified Control Center & Analytics Dashboard
+An overview of tokenized user stories, compiled test specifications, model confidence indicators, and parallel speedup analytics.
+![Analytics Dashboard](assets/dashboard.png)
 
-### CSV Schema Requirements
-The uploaded CSV file must contain the following headers:
-- `Story`: The raw user story text (e.g., *As a user I want to...*).
-- `Criteria`: The acceptance criteria to be parsed and translated (e.g., *- Given the user is on the login page...*).
+### 2. AI-Powered Test Generation Studio
+Translate natural language inputs into clean Gherkin syntax and auto-generate comprehensive Page Object Model structures.
+![BDD Generation Studio](assets/generator.png)
 
-Example:
-```csv
-Story,Criteria
-"As a user I want to log in"," - Given the user is on the login page
- - When the user enters credentials
- - Then the user should be on the dashboard"
+### 3. NLP Preprocessing Pipeline
+Deep-dive token inspection showing Part-of-Speech (POS) tagging and variables mapping step-by-step.
+![NLP Preprocessing UI](assets/nlp_pipeline_ui.png)
+
+### 4. Playwright Parallel Execution Runner
+Stream live terminal outputs from concurrent browser execution threads (Chromium, Firefox, WebKit) running actual local tests.
+![Playwright Executions UI](assets/playwright_runner_ui.png)
+
+---
+
+## 📹 Interactive Demo & Walkthrough
+
+| Workflow Recording: Input ➔ AI Compile ➔ Playwright Test |
+| :--- |
+| **Step 1:** Paste Agile User Story and Acceptance Criteria.<br>**Step 2:** Select between local HuggingFace T5 or OpenAI GPT-4 inference engines.<br>**Step 3:** Click **Compile & Generate** to create your test artifacts.<br>**Step 4:** Trigger the **Parallel Runner** to spawn actual browser instances locally. |
+| _Recommended: Record a quick 30-second screen capture of this seamless flow, convert it to a `.gif` or `.mp4`, and drag it directly here to impress recruiters!_ |
+
+---
+
+## 🏗️ System & Core Architecture
+
+Below is the complete end-to-end data pipeline showing how natural language requirements transform into executed browser commands:
+
+```mermaid
+graph TD
+    subgraph Input_Layer [Agile Requirements]
+        US[User Story]
+        AC[Acceptance Criteria]
+    end
+
+    subgraph Core_NLP_Engine [SpecFlowAI Core NLP Engine]
+        Token[POS Tokenizer & Cleaners]
+        POSTag[POS Semantic Tagging]
+        US --> Token
+        AC --> Token
+        Token --> POSTag
+    end
+
+    subgraph AI_Inference_Layer [AI Inference Engines]
+        T5Model[Local Fine-Tuned T5 Model]
+        GPT4[OpenAI GPT-4 Mini API]
+        POSTag -->|Default local route| T5Model
+        POSTag -->|Configured API route| GPT4
+    end
+
+    subgraph Generator_Layer [Automation Generators]
+        BDDGen[BDD Gherkin Generator]
+        POMGen[Playwright POM Generator]
+        
+        T5Model --> BDDGen
+        GPT4 --> BDDGen
+        BDDGen -->|Extracts Locators & Actions| POMGen
+    end
+
+    subgraph Output_Layer [Exportable Automation Assets]
+        Feature[feature_name.feature]
+        PageClass[PageObjectName.ts - POM Class]
+        SpecFile[test_name.spec.ts - Execution Spec]
+        
+        BDDGen --> Feature
+        POMGen --> PageClass
+        POMGen --> SpecFile
+    end
+
+    subgraph Execution_Engine [Execution Engine]
+        PW[Playwright Parallel Test Runner]
+        Browsers[Chromium / Firefox / WebKit Threads]
+        
+        SpecFile --> PW
+        PageClass --> PW
+        PW -->|Spawns parallel subprocesses| Browsers
+    end
+
+    style Input_Layer fill:#1e1a2f,stroke:#7c3aed,stroke-width:2px,color:#ffffff
+    style Core_NLP_Engine fill:#12111a,stroke:#c0b3f5,stroke-width:2px,color:#ffffff
+    style AI_Inference_Layer fill:#12111a,stroke:#34d399,stroke-width:2px,color:#ffffff
+    style Generator_Layer fill:#12111a,stroke:#a78bfa,stroke-width:2px,color:#ffffff
+    style Output_Layer fill:#1e1a2f,stroke:#f472b6,stroke-width:2px,color:#ffffff
+    style Execution_Engine fill:#0b0a10,stroke:#fb923c,stroke-width:2px,color:#ffffff
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## 📄 Real Generated Output Examples
 
-- **Backend:** Python 3.10+, FastAPI, Pandas, NumPy, Scikit-learn, OpenAI API, Uvicorn
-- **Frontend:** React 18, TypeScript, Vite, Lucide-React, custom Vanilla CSS Glassmorphic panels
-- **Continuous Testing:** Playwright Test Runner (parallel configuration)
-- **Deployment:** Docker & GitHub Actions CI/CD workflows
+### 1. Generated Gherkin Feature File (`login_flow.feature`)
+```gherkin
+Feature: User Login
+  As a registered user
+  I want to log in to my account
+  So that I can access my dashboard
+
+  Scenario: Verify User Login
+    Given the user navigates to the login page "https://example.com/login"
+    When the user enters username "testuser" in the username field
+    And the user enters password "password123" in the password field
+    And clicks the login button
+    Then the user should be redirected to the dashboard page "/dashboard"
+```
+
+### 2. Generated Playwright Page Object Model Class (`UserLoginPage.ts`)
+```typescript
+import { Page, Locator } from '@playwright/test';
+
+export class UserLoginPage {
+  readonly page: Page;
+  readonly usernameField: Locator; // Represents: username field
+  readonly passwordField: Locator; // Represents: password field
+  readonly loginButton: Locator;   // Represents: login button
+
+  constructor(page: Page) {
+    this.page = page;
+    this.usernameField = page.locator('#username');
+    this.passwordField = page.locator('#password');
+    this.loginButton = page.locator('#loginButton');
+  }
+
+  async goto() {
+    await this.page.goto('https://example.com/login');
+  }
+
+  async fillUsernameField(value: string) {
+    await this.usernameField.fill(value);
+  }
+
+  async fillPasswordField(value: string) {
+    await this.passwordField.fill(value);
+  }
+
+  async clickLoginButton() {
+    await this.loginButton.click();
+  }
+
+  // High-level composite user action for login flow
+  async login(username: string, password: string) {
+    await this.usernameField.fill(username);
+    await this.passwordField.fill(password);
+    await this.loginButton.click();
+  }
+}
+```
+
+### 3. Generated Playwright Spec File (`user_login.spec.ts`)
+```typescript
+import { test, expect } from '@playwright/test';
+import { UserLoginPage } from './UserLoginPage';
+
+test.describe('User Login Tests', () => {
+  let userloginpage: UserLoginPage;
+
+  test.beforeEach(async ({ page }) => {
+    userloginpage = new UserLoginPage(page);
+  });
+
+  test('Verify User Login workflow successfully', async ({ page }) => {
+    // 1. Actions block
+    // Given/When: the user navigates to the login page "https://example.com/login"
+    await userloginpage.goto();
+    // Given/When: the user enters username "testuser" in the username field
+    await userloginpage.fillUsernameField('testuser');
+    // Given/When: the user enters password "password123" in the password field
+    await userloginpage.fillPasswordField('password123');
+    // Given/When: clicks the login button
+    await userloginpage.clickLoginButton();
+
+    // 2. Assertions / Expect block
+    // Then: the user should be redirected to the dashboard page "/dashboard"
+    await expect(page).toHaveURL(/.*\/dashboard/);
+  });
+});
+```
 
 ---
 
-## 💻 Local Setup & Running Instructions
+## 🛠️ Technology Stack
+
+- **Backend Predictive Core:** FastAPI, PyTorch, Hugging Face `transformers` (T5-Small), Pandas, NumPy, Scikit-learn, OpenAI API Client, Uvicorn
+- **Frontend Dashboard:** React 19, TypeScript, Vite, Lucide-React icons, custom Vanilla CSS Glassmorphism layers
+- **Automated Testing Engine:** Playwright Test Runner (parallel browser threads)
+- **Deployment & CI/CD:** Docker, Docker-Compose, GitHub Actions runner workflows
+
+---
+
+## ⚙️ Model Fine-Tuning CSV Schema Requirements
+
+The local HuggingFace T5 training pipeline accepts `.csv` dataset configurations. To fine-tune the translation weights, ensure your CSV matches this standard:
+
+| Column Header | Description | Example |
+| :--- | :--- | :--- |
+| `Story` | The raw Agile requirements. | `"As a customer, I want to log in so that I can view my invoice."` |
+| `Criteria` | The natural language statements. | `"Given user is on login page. When enters details. Then redirected to billing."` |
+
+---
+
+## 💻 Local Quick Start
 
 ### Prerequisites
-Ensure you have **Node.js (v18+)** and **Python (3.9+)** installed on your system.
+* **Node.js** (v20+ recommended for Vite compatibility)
+* **Python** (v3.9+ with pip)
 
-### 1. Run the Python Backend Service
-Navigate to the `backend` folder, install requirements, and spin up the FastAPI server:
+### 1. Launch the Python FastAPI Backend
+Navigate to the `backend` directory, install package requirements, and start the hot-reloading server:
 ```bash
 cd backend
 pip install -r requirements.txt
 python main.py
 ```
-*The server will run on `http://127.0.0.1:8000`.*
+_The API server binds to `http://127.0.0.1:8001`._
 
-### 2. Run the React Web App
-Navigate to the `frontend` folder, install packages, and launch Vite dev server:
+### 2. Launch the React Web App
+Navigate to the `frontend` directory, load Node modules, and boot up Vite:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-*The web interface will start on `http://localhost:5173`.*
+_The UI will mount at `http://localhost:5173` (or `http://localhost:5174` if port 5173 is currently bound)._
 
 ---
 
 ## 🐳 Docker Deployment
 
-To build and launch both services locally inside Docker containers with a single command:
+To spin up the entire application stack in containerized microservices:
 ```bash
 docker-compose up --build
 ```
-The application will map:
-- Web App UI: `http://localhost`
-- Backend API endpoints: `http://localhost:8000`
+* **Web App UI Portal:** `http://localhost`
+* **API Service:** `http://localhost:8001`
 
 ---
 
-## ⚙️ DevOps and CI/CD Pipeline
+## ⚙️ CI/CD Integration & Continuous Quality
 
-Continuous automation runs are configured in:
-- [playwright.config.ts](playwright.config.ts) - Sets up browsers, retry counts, traces on failure, and parallel worker configurations.
-- [.github/workflows/playwright.yml](.github/workflows/playwright.yml) - Automatic continuous testing integration workflow.
+Enterprise continuous automation is integrated into the following configurations:
+- **[playwright.config.ts](frontend/playwright.config.ts)**: Configures browser projects (Chromium, Firefox, WebKit), execution retries, parallel thread count, and reports.
+- **[.github/workflows/playwright.yml](.github/workflows/playwright.yml)**: Continuous integration pipeline setup to cache dependencies, spin up the local Vite server, and run automated verification runs on every main repository check-in.
+
+---
+
+## ⚖️ License
+
+Distributed under the **MIT License**. See `LICENSE` for details.

@@ -48,7 +48,7 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
     setTypedUser('');
     setTypedPass('');
 
-    const eventSource = new EventSource('http://127.0.0.1:8000/api/run-test-stream');
+    const eventSource = new EventSource('http://127.0.0.1:8001/api/run-test-stream');
 
     eventSource.onmessage = (event) => {
       const log: LogItem = JSON.parse(event.data);
