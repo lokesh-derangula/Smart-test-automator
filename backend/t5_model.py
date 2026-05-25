@@ -13,6 +13,8 @@ class T5FineTuner:
         self.tokenizer = None
         self.model = None
         self.is_trained = False
+        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.weights_path = os.path.join(self.current_dir, "t5_finetuned_weights.pt")
         
     def load_model(self):
         """Loads T5 model and tokenizer from cache/HuggingFace."""
@@ -73,7 +75,7 @@ class T5FineTuner:
                 progress_callback(epoch, avg_loss)
                 
         # Save model state locally
-        torch.save(self.model.state_dict(), "t5_finetuned_weights.pt")
+        torch.save(self.model.state_dict(), self.weights_path)
         self.is_trained = True
         
     def generate(self, story: str, fallback_parser) -> str:
@@ -85,9 +87,9 @@ class T5FineTuner:
         self.load_model()
         
         # Load saved weights if they exist
-        if os.path.exists("t5_finetuned_weights.pt") and not self.is_trained:
+        if os.path.exists(self.weights_path) and not self.is_trained:
             try:
-                self.model.load_state_dict(torch.load("t5_finetuned_weights.pt", map_location=torch.device('cpu')))
+                self.model.load_state_dict(torch.load(self.weights_path, map_location=torch.device('cpu')))
                 self.is_trained = True
             except Exception as e:
                 print(f"Error loading T5 weights: {e}")

@@ -14,6 +14,10 @@ from pom_generator import POMGenerator
 from openai import OpenAI
 from t5_model import T5FineTuner
 
+# Dynamic Project Root Resolution
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir) if os.path.basename(current_dir) == 'backend' else current_dir
+
 app = FastAPI(title="AI Test Generator API", version="1.0.0")
 
 # CORS Setup
@@ -173,8 +177,9 @@ async def preprocess(req: GenerationRequest):
 @app.post("/api/upload-dataset")
 async def upload_dataset(file: UploadFile = File(...)):
     """Receives and saves the user-uploaded dataset CSV file."""
-    os.makedirs("backend/data", exist_ok=True)
-    save_path = "backend/data/uploaded_dataset.csv"
+    data_dir = os.path.join(project_root, "backend", "data")
+    os.makedirs(data_dir, exist_ok=True)
+    save_path = os.path.join(data_dir, "uploaded_dataset.csv")
     try:
         with open(save_path, "wb") as buffer:
             buffer.write(await file.read())
@@ -185,7 +190,7 @@ async def upload_dataset(file: UploadFile = File(...)):
 @app.get("/api/download-sample-dataset")
 async def download_sample_dataset():
     """Serves the 50-sample dataset CSV file for download."""
-    path = "backend/data/test_cases_dataset.csv"
+    path = os.path.join(project_root, "backend", "data", "test_cases_dataset.csv")
     if os.path.exists(path):
         return FileResponse(path, media_type="text/csv", filename="sample_qa_dataset.csv")
     else:
@@ -295,8 +300,8 @@ async def train_model_stream(epochs: int = 5, dataset_size: int = 150):
     Trains the T5 model on the dataset and yields actual loss curves.
     """
     async def event_generator():
-        uploaded_path = "backend/data/uploaded_dataset.csv"
-        default_path = "backend/data/test_cases_dataset.csv"
+        uploaded_path = os.path.join(project_root, "backend", "data", "uploaded_dataset.csv")
+        default_path = os.path.join(project_root, "backend", "data", "test_cases_dataset.csv")
         path_to_use = uploaded_path if os.path.exists(uploaded_path) else default_path
         
         yield f"data: {json.dumps({'message': 'Loading HuggingFace T5 model and tokenizers...', 'progress': 5})}\n\n"
@@ -354,12 +359,12 @@ async def run_test_stream():
         if latest_generated_test["spec_code"] and latest_generated_test["spec_filename"]:
             # Write page class file
             if latest_generated_test["page_code"] and latest_generated_test["page_filename"]:
-                page_file_path = f"frontend/tests/{latest_generated_test['page_filename']}"
+                page_file_path = os.path.join(project_root, "frontend", "tests", latest_generated_test['page_filename'])
                 with open(page_file_path, "w", encoding="utf-8") as f:
                     f.write(latest_generated_test["page_code"])
             
             # Write spec file
-            spec_file_path = f"frontend/tests/{latest_generated_test['spec_filename']}"
+            spec_file_path = os.path.join(project_root, "frontend", "tests", latest_generated_test['spec_filename'])
             with open(spec_file_path, "w", encoding="utf-8") as f:
                 f.write(latest_generated_test["spec_code"])
                 
@@ -379,7 +384,7 @@ async def run_test_stream():
             # Web Server starts up automatically as configured in playwright.config.ts
             process = subprocess.Popen(
                 "npx playwright test",
-                cwd="frontend",
+                cwd=os.path.join(project_root, "frontend"),
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
