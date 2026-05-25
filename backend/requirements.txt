@@ -13,3 +13,5 @@ sentencepiece
 accelerate
 tokenizers
 datasets
+huggingface_hub
+

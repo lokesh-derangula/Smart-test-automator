@@ -2,6 +2,15 @@ import os
 import torch
 import pandas as pd
 from transformers import T5ForConditionalGeneration, T5Tokenizer
+from huggingface_hub import login
+
+hf_token = os.getenv("HF_TOKEN")
+
+if hf_token:
+    login(token=hf_token)
+    print("Hugging Face login successful")
+else:
+    print("HF_TOKEN not found")
 
 class T5FineTuner:
     """
