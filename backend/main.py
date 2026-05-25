@@ -1,6 +1,8 @@
 import os
+import io
 import json
 import asyncio
+import zipfile
 import subprocess
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -197,6 +199,94 @@ async def download_file(req: DownloadRequest):
         media_type="text/plain",
         headers={"Content-Disposition": f"attachment; filename={req.filename}"}
     )
+
+class ZipRequest(BaseModel):
+    featureName: str
+    gherkin: str
+    pageFilename: str
+    pageCode: str
+    specFilename: str
+    specCode: str
+
+@app.post("/api/download-zip")
+async def download_zip(req: ZipRequest):
+    import re
+    file_base = re.sub(r'[^a-z0-9]+', '_', req.featureName.lower()) or 'test'
+    feature_filename = f"{file_base}.feature"
+    
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        # 1. Feature file
+        zip_file.writestr(f"tests/{feature_filename}", req.gherkin)
+        # 2. Page Object Model file
+        zip_file.writestr(f"tests/{req.pageFilename}", req.pageCode)
+        # 3. Spec file
+        zip_file.writestr(f"tests/{req.specFilename}", req.specCode)
+        # 4. Playwright config template
+        playwright_config = """import { defineConfig, devices } from '@playwright/test';
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: true,
+  reporter: [['html'], ['list']],
+  use: {
+    baseURL: 'https://example.com',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  ],
+});"""
+        zip_file.writestr("playwright.config.ts", playwright_config)
+        # 5. package.json template
+        package_json = """{
+  "name": "specflowai-test-suite",
+  "version": "1.0.0",
+  "description": "Generated Playwright POM Automation Suite",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "scripts": {
+    "test": "playwright test"
+  }
+}"""
+        zip_file.writestr("package.json", package_json)
+        # 6. README.md template explaining how to run
+        readme_md = f"""# Generated Playwright Automation Suite
+Created automatically with SpecFlowAI BDD & Playwright Test Studio.
+
+## Folder Structure
+- `tests/`: Contains the generated Playwright specifications (`{req.specFilename}`, `{feature_filename}`).
+- `tests/{req.pageFilename}`: The modular Page Object Model class.
+- `playwright.config.ts`: Configured for parallel cross-browser runs.
+- `package.json`: NPM dependencies.
+
+## Local Run
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Install Playwright browsers:
+   ```bash
+   npx playwright install
+   ```
+3. Run tests:
+   ```bash
+   npx playwright test
+   ```
+"""
+        zip_file.writestr("README.md", readme_md)
+        
+    zip_buffer.seek(0)
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename={file_base}_playwright_suite.zip",
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+    )
+
 
 @app.get("/api/train-model-stream")
 async def train_model_stream(epochs: int = 5, dataset_size: int = 150):

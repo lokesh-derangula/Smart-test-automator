@@ -17,7 +17,10 @@ import {
   MousePointer,
   CheckCircle2,
   FileText,
-  HelpCircle
+  HelpCircle,
+  FolderOpen,
+  Eye,
+  Info
 } from 'lucide-react';
 import TestRunnerSimulator from './TestRunnerSimulator';
 
@@ -51,12 +54,14 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
   
   // Roadmap states
   const [parsedSteps, setParsedSteps] = useState<any[]>([]);
+  const [pipelineTable, setPipelineTable] = useState<any[]>([]);
   const [modeUsed, setModeUsed] = useState('Local NLP Engine');
-  const [showTechnicalCode, setShowTechnicalCode] = useState(false);
-  const [activeCodeTab, setActiveCodeTab] = useState<'gherkin' | 'page' | 'spec'>('page');
+  
+  // Tab within Step 2 Code Visualizer Studio
+  const [activeStudioTab, setActiveStudioTab] = useState<'spec' | 'pom' | 'nlp' | 'readme'>('spec');
 
   const [copied, setCopied] = useState(false);
-  const [copiedGherkin, setCopiedGherkin] = useState(false);
+  const [downloadingZip, setDownloadingZip] = useState(false);
 
   // Template lists
   const templates = [
@@ -106,6 +111,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
       if (data.success) {
         setModeUsed(data.mode);
         setParsedSteps(data.steps || []);
+        setPipelineTable(data.pipeline_table || []);
         
         onGenerated({
           gherkin: data.gherkin,
@@ -131,30 +137,29 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
   const handleCopy = () => {
     if (!generatedSpec) return;
     let textToCopy = '';
-    if (activeCodeTab === 'gherkin') textToCopy = generatedSpec.gherkin;
-    else if (activeCodeTab === 'page') textToCopy = generatedSpec.pageCode;
-    else if (activeCodeTab === 'spec') textToCopy = generatedSpec.specCode;
+    if (activeStudioTab === 'spec') textToCopy = generatedSpec.specCode;
+    else if (activeStudioTab === 'pom') textToCopy = generatedSpec.pageCode;
+    else if (activeStudioTab === 'readme') textToCopy = getReadmeContent();
 
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
+  const handleDownloadSingleFile = () => {
     if (!generatedSpec) return;
     let filename = '';
     let content = '';
 
-    if (activeCodeTab === 'gherkin') {
-      const file_base = featureName.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'test';
-      filename = `${file_base}.feature`;
-      content = generatedSpec.gherkin;
-    } else if (activeCodeTab === 'page') {
-      filename = generatedSpec.pageFilename;
-      content = generatedSpec.pageCode;
-    } else if (activeCodeTab === 'spec') {
+    if (activeStudioTab === 'spec') {
       filename = generatedSpec.specFilename;
       content = generatedSpec.specCode;
+    } else if (activeStudioTab === 'pom') {
+      filename = generatedSpec.pageFilename;
+      content = generatedSpec.pageCode;
+    } else if (activeStudioTab === 'readme') {
+      filename = 'README.md';
+      content = getReadmeContent();
     }
 
     fetch("http://127.0.0.1:8001/api/download/file", {
@@ -185,7 +190,75 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
       });
   };
 
-  const highlightCode = (code: string, type: 'gherkin' | 'typescript') => {
+  const handleDownloadZip = () => {
+    if (!generatedSpec) return;
+    setDownloadingZip(true);
+    
+    fetch("http://127.0.0.1:8001/api/download-zip", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        featureName,
+        gherkin: generatedSpec.gherkin,
+        pageFilename: generatedSpec.pageFilename,
+        pageCode: generatedSpec.pageCode,
+        specFilename: generatedSpec.specFilename,
+        specCode: generatedSpec.specCode
+      })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error("ZIP generation failed");
+        return res.blob();
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const file_base = featureName.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'test';
+        a.download = `${file_base}_playwright_suite.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(err => {
+        console.error("ZIP download error:", err);
+        alert("Failed to download ZIP file from backend.");
+      })
+      .finally(() => {
+        setDownloadingZip(false);
+      });
+  };
+
+  const getReadmeContent = () => {
+    if (!generatedSpec) return '';
+    const file_base = featureName.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'test';
+    return `# Generated Playwright Automation Suite
+Created automatically with SpecFlowAI BDD & Playwright Test Studio.
+
+## Folder Structure
+- \`tests/\`: Contains the generated Playwright specifications (\`${generatedSpec.specFilename}\`, \`${file_base}.feature\`).
+- \`tests/${generatedSpec.pageFilename}\`: The modular Page Object Model class.
+- \`playwright.config.ts\`: Configured for parallel cross-browser runs.
+- \`package.json\`: NPM dependencies.
+
+## Local Run
+1. Install dependencies:
+   \`\`\`bash
+   npm install
+   \`\`\`
+2. Install Playwright browsers:
+   \`\`\`bash
+   npx playwright install
+   \`\`\`
+3. Run tests:
+   \`\`\`bash
+   npx playwright test
+   \`\`\`
+`;
+  };
+
+  const highlightCode = (code: string, type: 'gherkin' | 'typescript' | 'markdown') => {
     if (!code) return '';
     let escaped = code
       .replace(/&/g, "&amp;")
@@ -200,6 +273,19 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
       escaped = escaped.replace(
         /("[^"]*")/g,
         '<span style="color: #34d399;">$1</span>'
+      );
+    } else if (type === 'markdown') {
+      escaped = escaped.replace(
+        /^(#+\s+.*)$/gm,
+        '<span style="color: #c0b3f5; font-weight: bold;">$1</span>'
+      );
+      escaped = escaped.replace(
+        /`([^`]+)`/g,
+        '<span style="color: #22d3ee; font-family: monospace;">$1</span>'
+      );
+      escaped = escaped.replace(
+        /(\*\*\s*.*?\s*\*\*)/g,
+        '<span style="color: #ffffff; font-weight: 700;">$1</span>'
       );
     } else {
       const keywords = [
@@ -226,7 +312,6 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
     return escaped;
   };
 
-  // Helper to map parsed actions to visual icons
   const getActionIcon = (action: string, expectation: string) => {
     const act = action.toLowerCase();
     const exp = expectation.toLowerCase();
@@ -239,7 +324,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px', height: '100%' }}>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
       
       {/* 3-Step Wizard Navigation Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(192,179,245,0.06)', paddingBottom: '16px' }}>
@@ -254,13 +339,12 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {[
             { step: 1, label: '1. Describe' },
-            { step: 2, label: '2. Review Map' },
+            { step: 2, label: '2. Review Map & Code' },
             { step: 3, label: '3. Run Browser' }
           ].map(s => (
             <button 
               key={s.step}
               onClick={() => {
-                // Only allow switching to step 2 or 3 if spec has been generated
                 if (s.step === 1 || generatedSpec) {
                   setCurrentStep(s.step as any);
                 }
@@ -291,7 +375,6 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
       {currentStep === 1 && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* Section info */}
           <div style={{ background: 'rgba(140, 122, 230, 0.03)', border: '1px solid rgba(140, 122, 230, 0.1)', padding: '16px 20px', borderRadius: '16px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--secondary)' }}>Step 1: Write in Plain English</h3>
             <p style={{ color: '#8f8ca4', fontSize: '0.82rem', marginTop: '4px', lineHeight: '1.4' }}>
@@ -446,85 +529,79 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
       {currentStep === 2 && generatedSpec && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* Section info */}
+          {/* Info Banner */}
           <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.15)', padding: '16px 20px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#34d399' }}>Step 2: Inspect AI Map</h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#34d399' }}>Step 2: Review Map & Code</h3>
               <p style={{ color: '#8f8ca4', fontSize: '0.82rem', marginTop: '4px' }}>
-                SpecFlowAI parsed your story using <strong>{modeUsed}</strong>. Review the step map below.
+                SpecFlowAI parsed your story using <strong>{modeUsed}</strong>. Review the execution roadmap on the left and full workspace code/analytics on the right.
               </p>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={handleDownload}
-                className="btn btn-white" 
-                style={{ fontSize: '0.75rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Download size={14} />
-                <span>Export Code</span>
-              </button>
             </div>
           </div>
 
-          {/* Interactive AI Roadmap - Steps visualization */}
-          <div className="saas-panel" style={{ padding: '24px', background: '#12111a', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Visual Automation Blueprint</h3>
+          {/* Two-Column Side-by-Side Grid Layout */}
+          <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '24px', alignItems: 'stretch' }}>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
+            {/* Left Column: Visual Step Roadmap */}
+            <div className="saas-panel" style={{ padding: '24px', background: '#12111a', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Eye size={18} color="var(--secondary)" />
+                <span>Visual Roadmap Blueprint</span>
+              </h3>
               
-              {/* Vertical connector line */}
-              <div style={{
-                position: 'absolute',
-                top: '20px',
-                bottom: '20px',
-                left: '26px',
-                width: '2px',
-                background: 'linear-gradient(180deg, var(--primary) 0%, rgba(192,179,245,0.08) 100%)',
-                zIndex: 0
-              }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', overflowY: 'auto', maxHeight: '520px', paddingRight: '8px' }}>
+                
+                {/* Vertical connector line */}
+                <div style={{
+                  position: 'absolute',
+                  top: '20px',
+                  bottom: '20px',
+                  left: '26px',
+                  width: '2px',
+                  background: 'linear-gradient(180deg, var(--primary) 0%, rgba(192,179,245,0.08) 100%)',
+                  zIndex: 0
+                }} />
 
-              {parsedSteps.length > 0 ? (
-                parsedSteps.map((step, index) => (
-                  <div 
-                    key={index} 
-                    style={{ 
-                      display: 'flex', 
-                      gap: '16px', 
-                      alignItems: 'flex-start',
-                      zIndex: 1
-                    }}
-                  >
-                    {/* Step Icon circle */}
-                    <div style={{
-                      width: '54px',
-                      height: '54px',
-                      borderRadius: '50%',
-                      background: '#0b0a10',
-                      border: '1px solid rgba(192, 179, 245, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-                      flexShrink: 0
-                    }}>
-                      {getActionIcon(step.action, step.expectation)}
-                    </div>
+                {parsedSteps.length > 0 ? (
+                  parsedSteps.map((step, index) => (
+                    <div 
+                      key={index} 
+                      style={{ 
+                        display: 'flex', 
+                        gap: '16px', 
+                        alignItems: 'flex-start',
+                        zIndex: 1
+                      }}
+                    >
+                      {/* Step Icon circle */}
+                      <div style={{
+                        width: '54px',
+                        height: '54px',
+                        borderRadius: '50%',
+                        background: '#0b0a10',
+                        border: '1px solid rgba(192, 179, 245, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                        flexShrink: 0
+                      }}>
+                        {getActionIcon(step.action, step.expectation)}
+                      </div>
 
-                    {/* Step Details Card */}
-                    <div className="hover-glow-card" style={{
-                      flexGrow: 1,
-                      background: 'rgba(255,255,255,0.01)',
-                      border: '1px solid rgba(192, 179, 245, 0.05)',
-                      borderRadius: '16px',
-                      padding: '14px 20px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {/* Step Details Card */}
+                      <div className="hover-glow-card" style={{
+                        flexGrow: 1,
+                        background: 'rgba(255,255,255,0.01)',
+                        border: '1px solid rgba(192, 179, 245, 0.05)',
+                        borderRadius: '16px',
+                        padding: '14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}>
                         <span style={{ 
-                          fontSize: '0.7rem', 
+                          fontSize: '0.68rem', 
                           fontWeight: 'bold', 
                           color: step.keyword === 'Given' ? 'var(--secondary)' : step.keyword === 'When' ? '#22d3ee' : '#f472b6',
                           background: 'rgba(255,255,255,0.02)',
@@ -534,149 +611,293 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
                         }}>
                           {step.keyword}
                         </span>
-                        <p style={{ fontSize: '0.88rem', fontWeight: 600, color: '#ffffff', marginTop: '2px' }}>
+                        <p style={{ fontSize: '0.82rem', fontWeight: 600, color: '#ffffff', marginTop: '2px' }}>
                           {step.step}
                         </p>
                       </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ color: '#8f8ca4', fontSize: '0.85rem', padding: '20px', textAlign: 'center' }}>
+                    No parsed steps found. Try re-generating from Step 1.
+                  </div>
+                )}
+              </div>
+            </div>
 
-                      {/* Technical detail badges */}
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {step.selector && (
-                          <span style={{ fontSize: '0.72rem', background: '#0b0a10', border: '1px solid rgba(192,179,245,0.08)', padding: '4px 10px', borderRadius: '12px', color: '#d1cde4' }}>
-                            Target: <code style={{ color: 'var(--secondary)' }}>{step.selector}</code>
-                          </span>
-                        )}
-                        {step.action !== 'none' && (
-                          <span style={{ fontSize: '0.72rem', background: '#0b0a10', border: '1px solid rgba(192,179,245,0.08)', padding: '4px 10px', borderRadius: '12px', color: '#d1cde4' }}>
-                            Action: <code style={{ color: '#22d3ee' }}>{step.action}</code>
-                          </span>
-                        )}
-                        {step.value && (
-                          <span style={{ fontSize: '0.72rem', background: '#0b0a10', border: '1px solid rgba(192,179,245,0.08)', padding: '4px 10px', borderRadius: '12px', color: '#d1cde4' }}>
-                            Value: <code style={{ color: '#34d399' }}>"{step.value}"</code>
-                          </span>
-                        )}
-                      </div>
+            {/* Right Column: Code & Analytics Studio Console */}
+            <div className="saas-panel" style={{ background: '#12111a', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              
+              {/* Studio Tab bar */}
+              <div style={{ 
+                background: '#09070f', 
+                borderBottom: '1px solid rgba(192,179,245,0.06)',
+                padding: '12px 20px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[
+                    { id: 'spec', label: 'Playwright Spec' },
+                    { id: 'pom', label: 'Page Objects (POM)' },
+                    { id: 'nlp', label: '🧠 NLP Parser Visualizer' },
+                    { id: 'readme', label: '📝 README.md Preview' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveStudioTab(tab.id as any)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        border: 'none',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        background: activeStudioTab === tab.id ? 'rgba(192,179,245,0.08)' : 'transparent',
+                        color: activeStudioTab === tab.id ? 'var(--secondary)' : '#8f8ca4',
+                        transition: 'all 0.2s',
+                        borderBottom: activeStudioTab === tab.id ? '2px solid var(--secondary)' : '2px solid transparent'
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ZIP Download button */}
+                <button
+                  onClick={handleDownloadZip}
+                  disabled={downloadingZip}
+                  className="btn btn-gradient"
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '0.78rem',
+                    borderRadius: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {downloadingZip ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <span>📦 Export Full Suite (.ZIP)</span>
+                  )}
+                </button>
+              </div>
+
+              {/* Tab Content Window */}
+              {activeStudioTab === 'spec' && (
+                <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                  {/* Metadata line */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0e0d14', padding: '10px 20px', borderBottom: '1px solid rgba(192,179,245,0.04)' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#8f8ca4', fontFamily: 'JetBrains Mono, monospace' }}>TYPESCRIPT (PLAYWRIGHT SPEC)</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-white" onClick={handleCopy} style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {copied ? <Check size={12} color="var(--success)" /> : <Copy size={12} />}
+                        <span>Copy</span>
+                      </button>
+                      <button className="btn btn-white" onClick={handleDownloadSingleFile} style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Download size={12} />
+                        <span>Download</span>
+                      </button>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div style={{ color: '#8f8ca4', fontSize: '0.85rem', padding: '20px', textAlign: 'center' }}>
-                  No parsed steps found. Try re-generating from Step 1.
+                  {/* Code editor */}
+                  <div style={{ 
+                    flexGrow: 1, 
+                    background: '#0b0a10', 
+                    padding: '20px', 
+                    fontFamily: 'JetBrains Mono, monospace', 
+                    fontSize: '0.82rem',
+                    lineHeight: '1.5',
+                    overflow: 'auto',
+                    maxHeight: '420px',
+                    borderBottomLeftRadius: '16px',
+                    borderBottomRightRadius: '16px'
+                  }}>
+                    <pre dangerouslySetInnerHTML={{ __html: highlightCode(generatedSpec.specCode, 'typescript') }} />
+                  </div>
+                </div>
+              )}
+
+              {activeStudioTab === 'pom' && (
+                <div style={{ display: 'flex', flexGrow: 1, alignItems: 'stretch' }}>
+                  
+                  {/* Left Sidebar explorer list */}
+                  <div style={{
+                    width: '180px',
+                    background: '#0e0d14',
+                    borderRight: '1px solid rgba(192,179,245,0.06)',
+                    padding: '16px 12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#8f8ca4', letterSpacing: '0.05em' }}>FILES Explorer</span>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'rgba(192,179,245,0.05)',
+                      padding: '8px 12px',
+                      borderRadius: '10px',
+                      color: 'var(--secondary)',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      border: '1px solid rgba(192,179,245,0.1)'
+                    }}>
+                      <FolderOpen size={14} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {generatedSpec.pageFilename}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right editor panel */}
+                  <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, width: 'calc(100% - 180px)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0e0d14', padding: '10px 20px', borderBottom: '1px solid rgba(192,179,245,0.04)' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#8f8ca4', fontFamily: 'JetBrains Mono, monospace' }}>TYPESCRIPT (POM CLASS)</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="btn btn-white" onClick={handleCopy} style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {copied ? <Check size={12} color="var(--success)" /> : <Copy size={12} />}
+                          <span>Copy</span>
+                        </button>
+                        <button className="btn btn-white" onClick={handleDownloadSingleFile} style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Download size={12} />
+                          <span>Download</span>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div style={{ 
+                      flexGrow: 1, 
+                      background: '#0b0a10', 
+                      padding: '20px', 
+                      fontFamily: 'JetBrains Mono, monospace', 
+                      fontSize: '0.82rem',
+                      lineHeight: '1.5',
+                      overflow: 'auto',
+                      maxHeight: '420px'
+                    }}>
+                      <pre dangerouslySetInnerHTML={{ __html: highlightCode(generatedSpec.pageCode, 'typescript') }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeStudioTab === 'nlp' && (
+                <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                  {/* Metadata line */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0e0d14', padding: '10px 20px', borderBottom: '1px solid rgba(192,179,245,0.04)' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#8f8ca4', fontFamily: 'JetBrains Mono, monospace' }}>NLP PARSER VISUALIZER (PARSED METADATA)</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--secondary)' }}>
+                      <Info size={12} />
+                      <span>Syntax Mapping complete</span>
+                    </div>
+                  </div>
+                  
+                  {/* Token Table */}
+                  <div style={{ 
+                    flexGrow: 1, 
+                    background: '#0b0a10', 
+                    padding: '20px', 
+                    overflowY: 'auto',
+                    maxHeight: '420px'
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(192, 179, 245, 0.08)', color: 'var(--secondary)', background: '#0b0a10' }}>
+                          <th style={{ padding: '10px 8px', borderRadius: '8px 0 0 8px' }}>Step</th>
+                          <th style={{ padding: '10px 8px' }}>Keyword</th>
+                          <th style={{ padding: '10px 8px' }}>Text Content</th>
+                          <th style={{ padding: '10px 8px' }}>Inferred Selector</th>
+                          <th style={{ padding: '10px 8px', borderRadius: '0 8px 8px 0' }}>Automation Target</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(pipelineTable.length > 0 ? pipelineTable : parsedSteps).map((step, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid rgba(192, 179, 245, 0.04)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                            <td style={{ padding: '10px 8px', fontWeight: 600, color: 'var(--primary)' }}>{`0${idx + 1}`}</td>
+                            <td style={{ padding: '10px 8px' }}>
+                              <span style={{ 
+                                fontSize: '0.7rem', 
+                                fontWeight: 'bold', 
+                                background: step.keyword === 'Given' ? 'rgba(124,58,237,0.12)' : step.keyword === 'When' ? 'rgba(6,182,212,0.12)' : 'rgba(236,72,153,0.12)',
+                                color: step.keyword === 'Given' ? 'var(--secondary)' : step.keyword === 'When' ? '#22d3ee' : '#f472b6',
+                                padding: '2px 6px',
+                                borderRadius: '8px'
+                              }}>
+                                {step.keyword || step.Keyword}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 8px', color: '#ffffff' }}>{step.step || step.Text}</td>
+                            <td style={{ padding: '10px 8px' }}>
+                              <code style={{ color: 'var(--secondary)' }}>{step.selector || step.InferredSelector}</code>
+                            </td>
+                            <td style={{ padding: '10px 8px', color: 'var(--secondary)', fontWeight: 600 }}>
+                              <code>
+                                {step.action === 'goto' || step.Action === 'goto' ? 'goto()' : 
+                                 step.action === 'type' || step.action === 'fill' || step.Action === 'type' ? 'fill()' : 
+                                 step.action === 'click' || step.Action === 'click' ? 'click()' : 
+                                 step.expectation === 'url' || step.Expectation === 'url' ? 'toHaveURL()' : 
+                                 step.expectation === 'visible' || step.Expectation === 'visible' ? 'toBeVisible()' : 
+                                 'none'}
+                              </code>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeStudioTab === 'readme' && (
+                <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                  {/* Metadata line */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0e0d14', padding: '10px 20px', borderBottom: '1px solid rgba(192,179,245,0.04)' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#8f8ca4', fontFamily: 'JetBrains Mono, monospace' }}>MARKDOWN (README.MD)</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-white" onClick={handleCopy} style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {copied ? <Check size={12} color="var(--success)" /> : <Copy size={12} />}
+                        <span>Copy</span>
+                      </button>
+                      <button className="btn btn-white" onClick={handleDownloadSingleFile} style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Download size={12} />
+                        <span>Download</span>
+                      </button>
+                    </div>
+                  </div>
+                  {/* Render content */}
+                  <div style={{ 
+                    flexGrow: 1, 
+                    background: '#0b0a10', 
+                    padding: '20px', 
+                    overflowY: 'auto',
+                    maxHeight: '420px',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontSize: '0.85rem',
+                    lineHeight: '1.6'
+                  }}>
+                    <pre 
+                      style={{ 
+                        fontFamily: 'JetBrains Mono, monospace', 
+                        fontSize: '0.8rem',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-all'
+                      }} 
+                      dangerouslySetInnerHTML={{ __html: highlightCode(getReadmeContent(), 'markdown') }} 
+                    />
+                  </div>
                 </div>
               )}
 
             </div>
-          </div>
 
-          {/* Accordion Collapsible for Technical Code blocks */}
-          <div className="saas-panel" style={{ background: '#12111a', overflow: 'hidden' }}>
-            <button 
-              onClick={() => setShowTechnicalCode(!showTechnicalCode)}
-              style={{
-                width: '100%',
-                background: '#09070f',
-                border: 'none',
-                padding: '16px 24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'between',
-                cursor: 'pointer',
-                color: 'white',
-                outline: 'none'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexGrow: 1 }}>
-                <Code2 size={18} color="var(--secondary)" />
-                <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>Show Technical Code Blocks (For Developers)</span>
-              </div>
-              {showTechnicalCode ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-            </button>
-
-            {showTechnicalCode && (
-              <div style={{ padding: '24px', borderTop: '1px solid rgba(192, 179, 245, 0.05)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(192, 179, 245, 0.05)', paddingBottom: '10px' }}>
-                  {/* Tabs */}
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button 
-                      onClick={() => setActiveCodeTab('gherkin')}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '20px',
-                        border: 'none',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        background: activeCodeTab === 'gherkin' ? 'rgba(192,179,245,0.08)' : 'transparent',
-                        color: activeCodeTab === 'gherkin' ? 'var(--secondary)' : '#8f8ca4'
-                      }}
-                    >
-                      Feature Scenario
-                    </button>
-                    <button 
-                      onClick={() => setActiveCodeTab('page')}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '20px',
-                        border: 'none',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        background: activeCodeTab === 'page' ? 'rgba(192,179,245,0.08)' : 'transparent',
-                        color: activeCodeTab === 'page' ? 'var(--secondary)' : '#8f8ca4'
-                      }}
-                    >
-                      {generatedSpec.pageFilename} (POM Page)
-                    </button>
-                    <button 
-                      onClick={() => setActiveCodeTab('spec')}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '20px',
-                        border: 'none',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        background: activeCodeTab === 'spec' ? 'rgba(192,179,245,0.08)' : 'transparent',
-                        color: activeCodeTab === 'spec' ? 'var(--secondary)' : '#8f8ca4'
-                      }}
-                    >
-                      {generatedSpec.specFilename} (Spec Runner)
-                    </button>
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn btn-white" onClick={handleCopy} style={{ padding: '6px 10px', borderRadius: '6px' }} title="Copy Code">
-                      {copied ? <Check size={14} color="var(--success)" /> : <Copy size={14} />}
-                    </button>
-                    <button className="btn btn-white" onClick={handleDownload} style={{ padding: '6px 10px', borderRadius: '6px' }} title="Download File">
-                      <Download size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Code viewport */}
-                <div style={{ 
-                  background: '#0b0a10', 
-                  borderRadius: '16px', 
-                  padding: '20px', 
-                  fontFamily: 'JetBrains Mono, monospace', 
-                  fontSize: '0.85rem',
-                  lineHeight: '1.6',
-                  overflow: 'auto',
-                  border: '1px solid rgba(192, 179, 245, 0.05)',
-                  maxHeight: '260px'
-                }}>
-                  <pre dangerouslySetInnerHTML={{ 
-                    __html: highlightCode(
-                      activeCodeTab === 'gherkin' ? generatedSpec.gherkin : (activeCodeTab === 'page' ? generatedSpec.pageCode : generatedSpec.specCode),
-                      activeCodeTab === 'gherkin' ? 'gherkin' : 'typescript'
-                    ) 
-                  }} />
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Navigation Controls */}
