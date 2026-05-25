@@ -346,7 +346,15 @@ async def train_model_stream(epochs: int = 5, dataset_size: int = 150):
                 
         yield f"data: {json.dumps({'message': 'Fine-tuning completed. Saved weights locally.', 'progress': 100})}\n\n"
         
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 @app.get("/api/run-test-stream")
 async def run_test_stream():
@@ -442,7 +450,15 @@ async def run_test_stream():
                 except Exception as e:
                     print(f"Failed to delete {spec_file_path}: {e}")
                     
-    return StreamingResponse(log_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        log_generator(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn
