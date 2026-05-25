@@ -29,6 +29,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def home():
+    return {"message": "Spec-Flow-AI Backend Running Successfully"}
+
 parser = NLPParser()
 generator = POMGenerator()
 t5_finetuner = T5FineTuner()
