@@ -55,47 +55,32 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
       setLogs(prev => [...prev, log]);
 
       const msg = log.msg.toLowerCase();
-      if (log.worker === 'chromium' || msg.includes('starting')) {
-        if (msg.includes('navigating to')) {
-          setBrowserUrl('https://example.com/login');
-          setBrowserState('login');
-        } else if (msg.includes('typing in username')) {
-          setBrowserState('typing_user');
-          let userVal = 'testuser';
-          let idx = 0;
-          const interval = setInterval(() => {
-            if (idx <= userVal.length) {
-              setTypedUser(userVal.substring(0, idx));
-              idx++;
-            } else {
-              clearInterval(interval);
-            }
-          }, 60);
-        } else if (msg.includes('typing in password')) {
-          setBrowserState('typing_pass');
-          let passVal = '•••••••••••';
-          let idx = 0;
-          const interval = setInterval(() => {
-            if (idx <= passVal.length) {
-              setTypedPass(passVal.substring(0, idx));
-              idx++;
-            } else {
-              clearInterval(interval);
-            }
-          }, 60);
-        } else if (msg.includes('clicking login button')) {
-          setBrowserState('submitting');
-        } else if (msg.includes('asserting redirection') || msg.includes('passed')) {
-          setTimeout(() => {
-            setBrowserUrl('https://example.com/dashboard');
-            setBrowserState('dashboard');
-          }, 300);
-        }
+      
+      // Update mock browser state based on real Playwright runtime events
+      if (msg.includes('navigating') || msg.includes('goto') || msg.includes('page.goto')) {
+        setBrowserUrl('https://example.com/login');
+        setBrowserState('login');
+      } else if (msg.includes('typing') || msg.includes('fill') || msg.includes('username')) {
+        setBrowserState('typing_user');
+        setTypedUser('testuser');
+      } else if (msg.includes('password') || msg.includes('secure')) {
+        setBrowserState('typing_pass');
+        setTypedPass('•••••••••••');
+      } else if (msg.includes('click') || msg.includes('submit')) {
+        setBrowserState('submitting');
+      } else if (msg.includes('passed') || msg.includes('success') || msg.includes('dashboard')) {
+        setTimeout(() => {
+          setBrowserUrl('https://example.com/dashboard');
+          setBrowserState('dashboard');
+        }, 300);
       }
 
-      if (msg.includes('3 passed')) {
-        eventSource.close();
-        setRunning(false);
+      // Automatically stop runner when process completes or all tests pass
+      if (msg.includes('finished') || msg.includes('exited with code') || (msg.includes('passed') && msg.includes('('))) {
+        setTimeout(() => {
+          eventSource.close();
+          setRunning(false);
+        }, 1000);
       }
     };
 

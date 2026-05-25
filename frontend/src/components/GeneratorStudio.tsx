@@ -29,6 +29,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated }: Gene
   const [loading, setLoading] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState<'page' | 'spec'>('page');
   const [copied, setCopied] = useState(false);
+  const [copiedGherkin, setCopiedGherkin] = useState(false);
   const [modeUsed, setModeUsed] = useState('');
 
   const [gherkin, setGherkin] = useState('');
@@ -134,16 +135,68 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated }: Gene
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleDownloadGherkin = () => {
+    const file_base = featureName.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'test';
+    const filename = `${file_base}.feature`;
+    
+    fetch("http://127.0.0.1:8000/api/download/file", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ filename, content: gherkin })
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(err => {
+        console.error("API download error:", err);
+        const localBlob = new Blob([gherkin], { type: 'text/plain' });
+        const localUrl = URL.createObjectURL(localBlob);
+        const a = document.createElement('a');
+        a.href = localUrl;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(localUrl);
+      });
+  };
+
   const handleDownload = () => {
     const filename = activeCodeTab === 'page' ? pageFilename : specFilename;
     const content = activeCodeTab === 'page' ? pageCode : specCode;
-    const blob = new Blob([content], { type: 'text/typescript' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    
+    fetch("http://127.0.0.1:8000/api/download/file", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ filename, content })
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(err => {
+        console.error("API download error:", err);
+        const localBlob = new Blob([content], { type: 'text/typescript' });
+        const localUrl = URL.createObjectURL(localBlob);
+        const a = document.createElement('a');
+        a.href = localUrl;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(localUrl);
+      });
   };
 
   return (
@@ -282,9 +335,22 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated }: Gene
                     <Code2 size={16} color="var(--secondary)" />
                     <h3 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Gherkin BDD Feature</h3>
                   </div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--secondary)', background: '#0b0a10', padding: '2px 8px', borderRadius: '12px', fontWeight: 600, border: '1px solid rgba(192, 179, 245, 0.05)' }}>
-                    BDD Compiled
-                  </span>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button className="btn btn-white" onClick={() => {
+                      navigator.clipboard.writeText(gherkin);
+                      setCopiedGherkin(true);
+                      setTimeout(() => setCopiedGherkin(false), 2000);
+                    }} style={{ padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', height: '28px' }} title="Copy Gherkin">
+                      {copiedGherkin ? <Check size={12} color="var(--success)" /> : <Copy size={12} />}
+                    </button>
+                    <button className="btn btn-white" onClick={handleDownloadGherkin} style={{ padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', height: '28px' }} title="Download .feature File">
+                      <Download size={12} />
+                    </button>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--secondary)', background: '#0b0a10', padding: '4px 8px', borderRadius: '12px', fontWeight: 600, border: '1px solid rgba(192, 179, 245, 0.05)' }}>
+                      BDD Compiled
+                    </span>
+                  </div>
                 </div>
                 
                 <div style={{ 

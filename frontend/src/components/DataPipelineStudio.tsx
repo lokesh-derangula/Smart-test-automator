@@ -51,6 +51,28 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
         }
       };
       reader.readAsText(file);
+
+      // Upload file to FastAPI backend
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      setStatusMsg("Uploading dataset to T5 engine...");
+      fetch("http://127.0.0.1:8000/api/upload-dataset", {
+        method: "POST",
+        body: formData,
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setStatusMsg("Dataset successfully uploaded and staged on backend T5 engine.");
+          } else {
+            setStatusMsg("Failed to stage dataset: " + data.message);
+          }
+        })
+        .catch(err => {
+          console.error("Upload error:", err);
+          setStatusMsg("Error uploading dataset: Make sure backend is running.");
+        });
     }
   };
 
@@ -164,6 +186,25 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
                 </div>
               </div>
             )}
+          </div>
+
+          <div style={{ textAlign: 'left', marginTop: '-6px', marginBottom: '4px' }}>
+            <a 
+              href="http://127.0.0.1:8000/api/download-sample-dataset" 
+              download
+              style={{ 
+                color: 'var(--secondary)', 
+                fontSize: '0.75rem', 
+                textDecoration: 'none', 
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Database size={12} />
+              Download 50-Sample Dataset CSV
+            </a>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

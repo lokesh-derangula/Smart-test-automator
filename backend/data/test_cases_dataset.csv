@@ -1,0 +1,186 @@
+Story,Criteria
+"As a registered customer, I want to log in to my account so that I can access my dashboard.","Given the user is on the login page
+When the user enters valid username ""testuser""
+And the user enters valid password ""password123""
+And clicks the login button
+Then the user should be redirected to the dashboard"
+"As a guest user, I want to see an error when logging in with wrong password so that my account remains secure.","Given the user is on the login page
+When the user enters username ""testuser""
+And enters incorrect password ""wrongpass""
+And clicks the login button
+Then the user should see an error message ""Invalid credentials"""
+"As a new user, I want to create an account so that I can log in.","Given the user is on the registration page
+When the user enters username ""newuser""
+And enters email ""newuser@example.com""
+And enters password ""SecurePass123""
+And clicks the sign up button
+Then the user should see a success message ""Account created successfully"""
+"As a logged-in user, I want to log out so that I can protect my session.","Given the user is on the dashboard
+When the user clicks the logout button
+Then the user should be redirected to the home page"
+"As a user, I want to reset my forgotten password so that I can regain access.","Given the user is on the forgot password page
+When the user enters email ""reset@example.com""
+And clicks the send reset link button
+Then the user should see a confirmation message ""Reset link sent"""
+"As a customer, I want to update my profile details so that my information is correct.","Given the user is on the profile page
+When the user enters new nickname ""SuperTester""
+And clicks the save profile button
+Then the user should see a toast notification ""Profile updated"""
+"As a user, I want to enable dark mode so that the screen is easier on my eyes.","Given the user is on the settings page
+When the user toggles the dark mode switch
+Then the user interface should switch to dark colors"
+"As a shopper, I want to search for items by keyword so that I can find what I want.","Given the user is on the shop page
+When the user types ""laptop"" in the search bar
+And clicks the search button
+Then the search results page should show matching items"
+"As an online buyer, I want to add products to my cart so that I can purchase them.","Given the user is on a product detail page
+When the user clicks the add to cart button
+Then the cart badge should update to show ""1"" item"
+"As a buyer, I want to remove items from my cart so that I do not buy them by mistake.","Given the user is on the cart page
+When the user clicks the remove item button
+Then the cart should display ""Your cart is empty"""
+"As a customer, I want to update the quantity of items in my cart so that I get the correct amount.","Given the user is on the cart page
+When the user changes the quantity to ""3""
+Then the cart subtotal should automatically recalculate"
+"As a user, I want to filter products by category so that I can browse specific items.","Given the user is on the shop page
+When the user selects category ""Electronics""
+Then only electronics products should be displayed"
+"As a shopper, I want to sort search results by price so that I can find the cheapest options.","Given the user is on the search results page
+When the user selects sort option ""Price: Low to High""
+Then the items should be ordered ascending by price"
+"As a checkout user, I want to enter my shipping address so that my order can be delivered.","Given the user is on the checkout shipping page
+When the user enters street ""123 Main St""
+And enters city ""Seattle""
+And enters zipcode ""98101""
+And clicks continue to payment
+Then the user should be redirected to the payment page"
+"As a checkout user, I want to pay with credit card so that my purchase is processed.","Given the user is on the checkout payment page
+When the user enters card number ""4111222233334444""
+And enters expiry ""12/28""
+And enters CVV ""123""
+And clicks the place order button
+Then the user should be redirected to the order success page"
+"As a customer, I want to see my order history so that I can track previous purchases.","Given the user is on the account dashboard
+When the user clicks on the order history link
+Then the page should display a list of past orders"
+"As a user, I want to subscribe to the newsletter so that I can receive updates.","Given the user is on the home page
+When the user enters email ""subscribe@example.com"" in newsletter input
+And clicks the subscribe button
+Then the page should show message ""Thank you for subscribing"""
+"As a dashboard user, I want to change my account email so that I can receive emails elsewhere.","Given the user is on the settings page
+When the user enters new email ""newemail@example.com""
+And enters current password ""password123""
+And clicks change email button
+Then the user should see message ""Verification email sent"""
+"As a premium user, I want to download my PDF invoice so that I can keep local copy.","Given the user is on the billing page
+When the user clicks the download invoice button
+Then a PDF invoice download should begin"
+"As a user, I want to delete my account so that my data is removed.","Given the user is on the account settings page
+When the user clicks delete account
+And confirms the deletion modal
+Then the account should be deactivated
+And the user is redirected to the home page"
+"As an admin, I want to view the list of registered users so that I can manage them.","Given the user is logged in as admin
+When the user navigates to the admin panel
+Then the page should display the user management table"
+"As an admin, I want to ban a user so that I can moderate community.","Given the user is on the admin user management page
+When the user clicks the ban button next to user ""spammer1""
+Then the user status should update to ""Banned"""
+"As a user, I want to contact customer support so that I can get help.","Given the user is on the support page
+When the user enters subject ""Broken Link""
+And enters description ""The dashboard link is broken""
+And clicks the submit ticket button
+Then the user should see ""Ticket submitted successfully"""
+"As a customer, I want to add items to my wishlist so that I can buy them later.","Given the user is on a product page
+When the user clicks the add to wishlist button
+Then the item should be saved in the wishlist folder"
+"As a shopper, I want to apply a promo code so that I get a discount.","Given the user is on the checkout page
+When the user enters promo code ""DISCOUNT20""
+And clicks the apply code button
+Then the total price should be reduced by 20%"
+"As a user, I want to see real-time chat support so that I can ask quick questions.","Given the user is on the website home page
+When the user clicks the support chat bubble
+Then the live chat box should expand"
+"As a merchant, I want to upload a product image so that customers can see it.","Given the user is on the merchant dashboard
+When the user selects product image file ""laptop.png""
+And clicks the upload product image button
+Then the product image preview should update"
+"As a dashboard user, I want to view my API keys so that I can integrate my apps.","Given the user is on the API developer portal
+When the user clicks show api key button
+Then the API key string should be revealed"
+"As a developer, I want to regenerate my API key so that I can rotate credentials.","Given the user is on the developer portal
+When the user clicks regenerate secret key
+Then the old key should be invalidated and new key displayed"
+"As a user, I want to write a product review so that I can share my experience.","Given the user is on the product reviews tab
+When the user selects 5 stars rating
+And writes comment ""Excellent quality!""
+And clicks submit review
+Then the review should appear in the list"
+"As a customer, I want to track my shipped package so that I know when it arrives.","Given the user is on the order details page
+When the user clicks track delivery button
+Then the tracking status roadmap should appear"
+"As a manager, I want to export sales report as CSV so that I can run local analytics.","Given the user is on the analytics panel
+When the user clicks export CSV report
+Then a CSV spreadsheet download should start"
+"As a user, I want to disable email notifications so that my inbox is clean.","Given the user is on the notification settings tab
+When the user unchecks receive marketing emails
+And clicks save choices
+Then the preferences should be saved successfully"
+"As a buyer, I want to select billing same as shipping so that I do not retype.","Given the user is on the payment page
+When the user checks the same as shipping checkbox
+Then the billing address fields should match shipping details"
+"As a mobile reader, I want the sidebar to collapse so that it doesn't block content.","Given the user is on the dashboard on a mobile screen
+When the user clicks the toggle sidebar button
+Then the sidebar panel should collapse out of view"
+"As a user, I want to choose my language preference so that I can read comfortably.","Given the user is on the profile settings page
+When the user selects language ""Spanish""
+Then the website labels should translate to Spanish"
+"As a moderator, I want to delete flag comments so that I can maintain community rules.","Given the user is on the moderation panel
+When the user clicks delete on flagged comment ID ""404""
+Then the comment should be removed from database"
+"As a merchant, I want to set custom discount percentages so that I can run sales.","Given the user is on the inventory control page
+When the user updates discount field to ""15%""
+And clicks update inventory
+Then the product discount status should register"
+"As a user, I want to see notification count badges so that I notice updates.","Given the user has unread notifications
+When the user loads the dashboard
+Then the bell icon should display badge ""3"""
+"As a customer, I want to clear search history so that I can maintain privacy.","Given the user clicks search box input
+When the user clicks clear search history link
+Then the recent searches list should be cleared"
+"As a traveler, I want to enter departure dates so that I can search flights.","Given the user is on the flight search interface
+When the user selects departure date ""2026-06-01""
+And clicks search flights button
+Then flights scheduled on that date should be listed"
+"As a traveler, I want to choose window seat so that I can view the flight.","Given the user is on the seat selection map
+When the user clicks seat ""12A""
+Then the seat selection summary should show window seat"
+"As a system administrator, I want to toggle maintenance mode so that I can perform updates.","Given the user is logged into admin settings portal
+When the user checks maintenance mode option
+Then a warning message ""System entering maintenance mode"" should be shown"
+"As a blogger, I want to save posts as draft so that I can finish them later.","Given the user is on the blog draft editor
+When the user clicks save as draft button
+Then the draft status should update to ""Draft Saved"""
+"As a customer, I want to buy a gift card so that I can send it to friends.","Given the user is on the gift cards menu
+When the user enters recipient email ""friend@example.com""
+And enters gift amount ""50""
+And clicks purchase gift card
+Then the card purchase checkout should trigger"
+"As a reader, I want to search articles by category tag so that I find relevant posts.","Given the user is on the blog home page
+When the user clicks the tag ""React""
+Then only articles tagged with React should be shown"
+"As a dashboard user, I want to see memory usage logs so that I can monitor server health.","Given the user is on system logs dashboard
+When the user clicks performance monitoring tab
+Then the server CPU and memory usage charts should render"
+"As a premium member, I want to invite friends to my team so that we can collaborate.","Given the user is on the team workspace management page
+When the user enters colleague email ""colleague@example.com""
+And clicks send invite button
+Then the user list should show invitation status ""Pending"""
+"As a team member, I want to accept my team invitation so that I can join workspace.","Given the user opens the team invite link
+When the user clicks accept invitation button
+Then the user should see workspace dashboard"
+"As a customer, I want to edit review stars rating so that I can update my review.","Given the user is on my reviews list
+When the user clicks edit on review ID ""12""
+And updates rating to ""4 stars""
+And clicks save review changes
+Then the review rating should be updated"
