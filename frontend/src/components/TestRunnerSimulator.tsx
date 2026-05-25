@@ -180,7 +180,11 @@ export default function TestRunnerSimulator({ generatedSpec, featureName = "User
       console.error(err);
       eventSource.close();
       setRunning(false);
-      setLogs(prev => [...prev, { worker: 'system', msg: 'Execution stream failed. Ensure backend is running.' }]);
+      setLogs(prev => {
+        const hasFinished = prev.some(l => l.msg.toLowerCase().includes('finished') || l.msg.toLowerCase().includes('exited with code'));
+        if (hasFinished) return prev;
+        return [...prev, { worker: 'system', msg: 'Execution stream failed. Ensure backend is running.' }];
+      });
     };
   };
 
