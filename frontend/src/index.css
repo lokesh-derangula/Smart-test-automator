@@ -1,0 +1,392 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg-app: #09070f;         /* Deep dark black-violet */
+  --bg-card: #12111a;        /* NixtNode solid black-grey cards */
+  --bg-input: #0b0a10;
+  
+  --border-color: rgba(192, 179, 245, 0.08);
+  --border-focus: #c0b3f5;
+  
+  --primary: #8c7ae6;        /* Soft purple */
+  --secondary: #c0b3f5;      /* Lilac accent */
+  --accent: #b1a3e8;
+  --success: #10b981;
+  --danger: #f43f5e;
+  
+  --text-primary: #ffffff;   /* High-contrast white */
+  --text-secondary: #c0b3f5; /* Lilac secondary */
+  --text-muted: #8f8ca4;     /* Purple-grey copy */
+  
+  --transition-fast: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  
+  font-family: 'Outfit', sans-serif;
+  color-scheme: dark;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(192, 179, 245, 0.1) transparent;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(192, 179, 245, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(192, 179, 245, 0.2);
+}
+
+body {
+  overflow-x: hidden;
+  background: radial-gradient(circle at 50% 25%, #18132b 0%, #09070f 55%); /* Radial space glow centered near top */
+  background-attachment: fixed;
+  min-height: 100vh;
+  padding: 0;
+}
+
+/* Full Screen App Wrapper */
+.saas-app-card {
+  width: 100%;
+  max-width: 100%;
+  background: transparent;
+  border-radius: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  box-shadow: none;
+}
+
+/* Header Navbar matching NixtNode */
+.saas-header {
+  height: 90px;
+  padding: 0 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border-bottom: 1px solid rgba(192, 179, 245, 0.04);
+}
+
+.saas-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.saas-logo-brace {
+  color: var(--secondary);
+  font-weight: 500;
+}
+
+.saas-nav {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.saas-nav-link {
+  background: transparent;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: #8f8ca4; /* Purple-grey links */
+  cursor: pointer;
+  padding: 12px 0;
+  position: relative;
+  transition: color var(--transition-fast);
+  text-transform: uppercase;
+}
+
+.saas-nav-link sup {
+  font-size: 0.6rem;
+  color: var(--secondary);
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+.saas-nav-link:hover {
+  color: #ffffff;
+}
+
+.saas-nav-link.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.saas-nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(255,255,255,0.4);
+}
+
+.saas-auth-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* App Main Body */
+.saas-body {
+  flex-grow: 1;
+  padding: 48px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* NixtNode Panels */
+.saas-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 28px; /* High-rounded corners */
+  box-shadow: none;
+  transition: border-color var(--transition-normal);
+}
+
+.saas-panel:hover {
+  border-color: rgba(192, 179, 245, 0.18);
+}
+
+.saas-card-interactive {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.saas-card-interactive:hover {
+  border-color: rgba(192, 179, 245, 0.25);
+  background: rgba(192, 179, 245, 0.02);
+  transform: translateY(-2px);
+}
+
+/* Monospace Pill Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.8rem;
+  padding: 14px 28px;
+  border-radius: 30px; /* Pill */
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.btn-gradient {
+  background: #ffffff; /* White high-contrast button matching NixtNode's bright actions */
+  color: #09070f;
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
+  border: 1px solid #ffffff;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(255, 255, 255, 0.25);
+  background: #fbfbfb;
+}
+
+.btn-gradient:disabled {
+  background: #252430;
+  color: #55526e;
+  border-color: #252430;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-white {
+  background: #12111a;
+  color: #ffffff;
+  border: 1px solid rgba(192, 179, 245, 0.25);
+}
+
+.btn-white:hover {
+  background: #181724;
+  border-color: var(--secondary);
+  box-shadow: 0 4px 15px rgba(192, 179, 245, 0.08);
+}
+
+.btn-icon-only {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  padding: 0;
+  border: 1px solid rgba(192, 179, 245, 0.2);
+  background: #12111a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--secondary);
+}
+
+.btn-icon-only:hover {
+  background: #181724;
+  border-color: var(--secondary);
+  transform: scale(1.05);
+}
+
+/* Forms */
+.input-field {
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--bg-input);
+  border: 1px solid rgba(192, 179, 245, 0.1);
+  border-radius: 14px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(192, 179, 245, 0.15);
+}
+
+/* Code Highlights / Terminal */
+.code-font {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+}
+
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(192, 179, 245, 0.08);
+}
+
+.editor-header {
+  background: #12111a;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(192, 179, 245, 0.08);
+}
+
+.editor-textarea {
+  flex-grow: 1;
+  width: 100%;
+  height: 100%;
+  background: #0b0a10;
+  color: #c0b3f5; /* lilac text */
+  padding: 20px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.terminal-view {
+  background: #0b0a10;
+  color: #c0b3f5;
+  padding: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  border-radius: 20px;
+  min-height: 220px;
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid rgba(192, 179, 245, 0.08);
+}
+
+/* Custom NixtNode Typography Utilities */
+.nixt-hero-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -2px;
+  color: #ffffff;
+}
+
+.nixt-brace-header {
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.giant-number {
+  font-size: 4.8rem;
+  font-weight: 800;
+  color: var(--secondary);
+  letter-spacing: -3px;
+  line-height: 1;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Status Footer Ribbon */
+.promo-ribbon {
+  background: rgba(18, 17, 26, 0.5);
+  border-top: 1px solid rgba(192, 179, 245, 0.04);
+  padding: 16px 60px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: #8f8ca4;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.5px;
+}
+.promo-ribbon strong {
+  color: #ffffff;
+}
