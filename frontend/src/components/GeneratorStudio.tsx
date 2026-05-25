@@ -23,6 +23,7 @@ import {
   Info
 } from 'lucide-react';
 import TestRunnerSimulator from './TestRunnerSimulator';
+import { API_URL } from '../config';
 
 interface GeneratorStudioProps {
   apiKey: string;
@@ -94,7 +95,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:8001/api/generate-all', {
+      const response = await fetch(`${API_URL}/api/generate-all`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +129,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
       }
     } catch (e) {
       console.error(e);
-      alert("Error contacting API backend. Please ensure the server is running on localhost:8001.");
+      alert(`Error contacting API backend (${API_URL}). Please ensure the server is running.`);
     } finally {
       setLoading(false);
     }
@@ -162,7 +163,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
       content = getReadmeContent();
     }
 
-    fetch("http://127.0.0.1:8001/api/download/file", {
+    fetch(`${API_URL}/api/download/file`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -194,7 +195,7 @@ export default function GeneratorStudio({ apiKey, setApiKey, onGenerated, genera
     if (!generatedSpec) return;
     setDownloadingZip(true);
     
-    fetch("http://127.0.0.1:8001/api/download-zip", {
+    fetch(`${API_URL}/api/download-zip`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

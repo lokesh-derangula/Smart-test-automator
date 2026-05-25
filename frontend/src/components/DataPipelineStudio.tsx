@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import { API_URL } from '../config';
 
 interface DataPipelineStudioProps {
   pipelineData: Array<any>;
@@ -60,7 +61,7 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
       formData.append("file", file);
       
       setStatusMsg("Uploading dataset to T5 engine...");
-      fetch("http://127.0.0.1:8001/api/upload-dataset", {
+      fetch(`${API_URL}/api/upload-dataset`, {
         method: "POST",
         body: formData,
       })
@@ -86,7 +87,7 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
     setStatusMsg('Connecting to T5 Transformer pipeline...');
 
     // SSE targeting correct port 8001
-    const eventSource = new EventSource(`http://127.0.0.1:8001/api/train-model-stream?epochs=${epochs}&dataset_size=${datasetSize}`);
+    const eventSource = new EventSource(`${API_URL}/api/train-model-stream?epochs=${epochs}&dataset_size=${datasetSize}`);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -199,7 +200,7 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
           {/* Sample dataset download link pointing to port 8001 */}
           <div style={{ textAlign: 'left', marginTop: '-4px', marginBottom: '2px' }}>
             <a 
-              href="http://127.0.0.1:8001/api/download-sample-dataset" 
+              href={`${API_URL}/api/download-sample-dataset`} 
               download
               style={{ 
                 color: 'var(--secondary)', 

@@ -3,6 +3,7 @@ import Dashboard from './components/Dashboard';
 import GeneratorStudio from './components/GeneratorStudio';
 import DataPipelineStudio from './components/DataPipelineStudio';
 import CicdHub from './components/CicdHub';
+import { API_URL } from './config';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -29,7 +30,7 @@ export default function App() {
     setGeneratedSpec(data);
     
     // Parse step details for NLP flow visualization
-    fetch('http://127.0.0.1:8001/api/preprocess', {
+    fetch(`${API_URL}/api/preprocess`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

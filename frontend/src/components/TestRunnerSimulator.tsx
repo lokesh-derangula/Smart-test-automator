@@ -17,6 +17,7 @@ import {
   LogIn,
   Layers
 } from 'lucide-react';
+import { API_URL } from '../config';
 
 interface LogItem {
   worker: string;
@@ -129,7 +130,7 @@ export default function TestRunnerSimulator({ generatedSpec, featureName = "User
     setTypedPass('');
     setCheckedCount(0);
 
-    const eventSource = new EventSource('http://127.0.0.1:8001/api/run-test-stream');
+    const eventSource = new EventSource(`${API_URL}/api/run-test-stream`);
 
     eventSource.onmessage = (event) => {
       const log: LogItem = JSON.parse(event.data);
