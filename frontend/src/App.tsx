@@ -2,9 +2,7 @@ import { useState } from 'react';
 import Dashboard from './components/Dashboard';
 import GeneratorStudio from './components/GeneratorStudio';
 import DataPipelineStudio from './components/DataPipelineStudio';
-import TestRunnerSimulator from './components/TestRunnerSimulator';
 import CicdHub from './components/CicdHub';
-
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -53,26 +51,30 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onStart={() => setActiveTab('generator')} />;
       case 'generator':
-        return <GeneratorStudio apiKey={apiKey} setApiKey={setApiKey} onGenerated={handleGenerated} />;
+        return (
+          <GeneratorStudio 
+            apiKey={apiKey} 
+            setApiKey={setApiKey} 
+            onGenerated={handleGenerated} 
+            generatedSpec={generatedSpec}
+          />
+        );
       case 'pipeline':
         return <DataPipelineStudio pipelineData={pipelineData} />;
-      case 'runner':
-        return <TestRunnerSimulator generatedSpec={generatedSpec} />;
       case 'cicd':
         return <CicdHub />;
       default:
-        return <Dashboard />;
+        return <Dashboard onStart={() => setActiveTab('generator')} />;
     }
   };
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', index: '01' },
-    { id: 'generator', label: 'Test Gen', index: '02' },
-    { id: 'pipeline', label: 'Pipeline', index: '03' },
-    { id: 'runner', label: 'Runner', index: '04' },
-    { id: 'cicd', label: 'CI/CD Hub', index: '05' },
+    { id: 'dashboard', label: 'Home', index: '01' },
+    { id: 'generator', label: 'Magic Studio', index: '02' },
+    { id: 'pipeline', label: 'AI Tuning', index: '03' },
+    { id: 'cicd', label: 'Integrations', index: '04' },
   ];
 
   return (
@@ -98,24 +100,9 @@ export default function App() {
           ))}
         </nav>
 
-        {/* Right Side: Configuration & Auth controls */}
-        <div className="saas-auth-group">
-          <input 
-            type="password" 
-            placeholder="OpenAI API Key" 
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            style={{
-              background: '#0b0a10',
-              border: '1px solid rgba(192, 179, 245, 0.1)',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              color: '#ffffff',
-              fontSize: '0.75rem',
-              width: '150px',
-              outline: 'none'
-            }}
-          />
+        {/* Right Side: Quick info tag */}
+        <div className="saas-auth-group" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>
+          <span>PORT: <strong style={{ color: 'var(--success)' }}>8001 (ACTIVE)</strong></span>
         </div>
       </header>
 
@@ -126,7 +113,7 @@ export default function App() {
 
       {/* Monospace System status line footer */}
       <div className="promo-ribbon">
-        <span>STATUS: <strong>ONLINE</strong> &nbsp;|&nbsp; LOCAL NLP ENGINE: <strong>OPTIMAL</strong> &nbsp;|&nbsp; PARALLEL RUNNER THREADS: <strong>CONNECTED (3)</strong></span>
+        <span>STATUS: <strong>ONLINE</strong> &nbsp;|&nbsp; LOCAL NLP ENGINE: <strong>OPTIMAL (T5)</strong> &nbsp;|&nbsp; PARALLEL RUNNER: <strong>CONNECTED</strong></span>
       </div>
     </div>
   );

@@ -5,7 +5,9 @@ import {
   Settings2,
   Table,
   Activity,
-  Database
+  Database,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface DataPipelineStudioProps {
@@ -23,6 +25,7 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvColumns, setCsvColumns] = useState<string[]>([]);
   const [csvRowsCount, setCsvRowsCount] = useState(0);
+  const [showDeveloperTable, setShowDeveloperTable] = useState(false);
 
   const defaultTokens = [
     { StepID: "STEP_01", Keyword: "Given", Text: "the user is on the login page", Tokens: "['the', 'user', 'is', 'on', 'the', 'login', 'page']", POSTags: "[('the', 'DET'), ('user', 'NOUN'), ('is', 'VERB'), ('on', 'ADJ/ADV/PROPN'), ('the', 'DET'), ('login', 'NOUN'), ('page', 'NOUN')]", InferredSelector: "login page", Variable: "loginPage", Action: "goto", Value: "https://example.com/login", Expectation: "none" },
@@ -52,12 +55,12 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
       };
       reader.readAsText(file);
 
-      // Upload file to FastAPI backend
+      // Upload file to FastAPI backend targeting correct port 8001
       const formData = new FormData();
       formData.append("file", file);
       
       setStatusMsg("Uploading dataset to T5 engine...");
-      fetch("http://127.0.0.1:8000/api/upload-dataset", {
+      fetch("http://127.0.0.1:8001/api/upload-dataset", {
         method: "POST",
         body: formData,
       })
@@ -82,7 +85,8 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
     setCurrentProgress(0);
     setStatusMsg('Connecting to T5 Transformer pipeline...');
 
-    const eventSource = new EventSource(`http://127.0.0.1:8000/api/train-model-stream?epochs=${epochs}&dataset_size=${datasetSize}`);
+    // SSE targeting correct port 8001
+    const eventSource = new EventSource(`http://127.0.0.1:8001/api/train-model-stream?epochs=${epochs}&dataset_size=${datasetSize}`);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -98,7 +102,7 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
       if (data.progress === 100) {
         eventSource.close();
         setTraining(false);
-        setStatusMsg('Model fine-tuned successfully. Saved weights to /models/t5_base_gherkin_pom.bin');
+        setStatusMsg('Model fine-tuned successfully. Saved weights locally.');
       }
     };
 
@@ -132,9 +136,9 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       <div>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>NLP Pipeline & Data Studio</h1>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>NLP Pipeline & AI Training Studio</h1>
         <p style={{ color: '#8f8ca4', fontSize: '0.95rem', marginTop: '4px' }}>
-          Inspect the tokenization of user acceptance criteria and fine-tune models to capture semantic testing components.
+          Upload training datasets to fine-tune the local T5 transformer model weights for Gherkin mapping.
         </p>
       </div>
 
@@ -147,15 +151,19 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
             <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>T5 Fine-Tuning Parameters</h3>
           </div>
 
+          {/* Premium styled drag-and-drop upload block */}
           <div style={{
-            border: '2px dashed rgba(192, 179, 245, 0.1)',
-            borderRadius: '16px',
-            padding: '20px',
+            border: '2px dashed rgba(192, 179, 245, 0.15)',
+            borderRadius: '20px',
+            padding: '24px 20px',
             textAlign: 'center',
             background: '#0b0a10',
             cursor: 'pointer',
-            position: 'relative'
-          }}>
+            position: 'relative',
+            transition: 'border-color 0.2s'
+          }}
+          className="hover-glow-card"
+          >
             <input 
               type="file" 
               accept=".csv" 
@@ -170,27 +178,28 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
                 cursor: 'pointer'
               }}
             />
-            <Upload size={24} color="var(--secondary)" style={{ margin: '0 auto 8px' }} />
+            <Upload size={28} color="var(--secondary)" style={{ margin: '0 auto 12px' }} />
             {csvFile ? (
               <div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--success)' }}>{csvFile.name} Uploaded</span>
-                <div style={{ fontSize: '0.7rem', color: '#8f8ca4', marginTop: '4px' }}>
-                  Found {csvRowsCount} pairs | Headers: {csvColumns.slice(0, 3).join(', ')}
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--success)' }}>{csvFile.name} Uploaded</span>
+                <div style={{ fontSize: '0.75rem', color: '#8f8ca4', marginTop: '6px' }}>
+                  Staging: {csvRowsCount} samples | Col Headers: {csvColumns.slice(0, 2).join(', ')}
                 </div>
               </div>
             ) : (
               <div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#ffffff' }}>Upload Dataset CSV (User Stories & Criteria)</span>
-                <div style={{ fontSize: '0.7rem', color: '#8f8ca4', marginTop: '4px' }}>
-                  Drag & drop your training spreadsheet here (supports columns: Story, Criteria)
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#ffffff' }}>Drag & Drop Training CSV File</span>
+                <div style={{ fontSize: '0.72rem', color: '#8f8ca4', marginTop: '6px', lineHeight: '1.4' }}>
+                  Select or drag a CSV file containing <strong>Story</strong> and <strong>Criteria</strong> columns.
                 </div>
               </div>
             )}
           </div>
 
-          <div style={{ textAlign: 'left', marginTop: '-6px', marginBottom: '4px' }}>
+          {/* Sample dataset download link pointing to port 8001 */}
+          <div style={{ textAlign: 'left', marginTop: '-4px', marginBottom: '2px' }}>
             <a 
-              href="http://127.0.0.1:8000/api/download-sample-dataset" 
+              href="http://127.0.0.1:8001/api/download-sample-dataset" 
               download
               style={{ 
                 color: 'var(--secondary)', 
@@ -203,13 +212,13 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
               }}
             >
               <Database size={12} />
-              Download 50-Sample Dataset CSV
+              <span>Download 50-Sample Dataset CSV Template</span>
             </a>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '0.75rem', color: '#8f8ca4' }}>Epochs</label>
+              <label style={{ fontSize: '0.75rem', color: '#8f8ca4', fontWeight: 600 }}>Epochs</label>
               <input 
                 type="number" 
                 className="input-field" 
@@ -220,7 +229,7 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '0.75rem', color: '#8f8ca4' }}>Dataset Size</label>
+              <label style={{ fontSize: '0.75rem', color: '#8f8ca4', fontWeight: 600 }}>Dataset Size</label>
               <input 
                 type="number" 
                 className="input-field" 
@@ -261,7 +270,7 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
             className="btn btn-gradient" 
             onClick={startFineTuning} 
             disabled={training || !csvFile}
-            style={{ width: '100%' }}
+            style={{ width: '100%', padding: '12px' }}
           >
             {training ? (
               <>
@@ -284,7 +293,7 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
 
         {/* Live Training Metrics Graph */}
         <div className="saas-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#12111a' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifySelf: 'stretch', justifyContent: 'space-between' }}>
             <div>
               <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Real-Time Loss Graph</h3>
               <p style={{ color: '#8f8ca4', fontSize: '0.8rem' }}>Plots fine-tuning error rates during training stream</p>
@@ -328,7 +337,7 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
               </svg>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
-                <Database size={32} />
+                <Database size={32} style={{ opacity: 0.2 }} />
                 <span style={{ fontSize: '0.8rem' }}>No active training session graph</span>
               </div>
             )}
@@ -344,59 +353,81 @@ export default function DataPipelineStudio({ pipelineData }: DataPipelineStudioP
         </div>
       </div>
 
-      {/* Bottom Half: NLP Parsed Table */}
-      <div className="saas-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#12111a' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Table size={18} color="var(--secondary)" />
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>NLP Parsing Pipeline (Preprocessing & Token Mapping)</h3>
-        </div>
-        
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(192, 179, 245, 0.08)', color: 'var(--secondary)', background: '#0b0a10' }}>
-                <th style={{ padding: '14px 12px', borderRadius: '12px 0 0 12px' }}>Step ID</th>
-                <th style={{ padding: '14px 12px' }}>Keyword</th>
-                <th style={{ padding: '14px 12px' }}>Text Content</th>
-                <th style={{ padding: '14px 12px' }}>Token Extraction</th>
-                <th style={{ padding: '14px 12px' }}>Part-of-Speech Tags</th>
-                <th style={{ padding: '14px 12px' }}>Inferred Selector</th>
-                <th style={{ padding: '14px 12px', borderRadius: '0 12px 12px 0' }}>Playwright Method</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeTokens.map((step, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid rgba(192, 179, 245, 0.04)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                  <td style={{ padding: '14px 12px', fontWeight: 600, color: 'var(--primary)' }}>{step.StepID || `STEP_${String(idx + 1).padStart(2, '0')}`}</td>
-                  <td style={{ padding: '14px 12px' }}>
-                    <span style={{ 
-                      fontSize: '0.75rem', 
-                      fontWeight: 'bold', 
-                      background: step.Keyword === 'Given' ? 'rgba(124,58,237,0.12)' : step.Keyword === 'When' ? 'rgba(6,182,212,0.12)' : 'rgba(236,72,153,0.12)',
-                      color: step.Keyword === 'Given' ? 'var(--secondary)' : step.Keyword === 'When' ? '#22d3ee' : '#f472b6',
-                      padding: '2px 8px',
-                      borderRadius: '12px'
-                    }}>
-                      {step.Keyword}
-                    </span>
-                  </td>
-                  <td style={{ padding: '14px 12px', color: '#ffffff' }}>{step.Text || step.step}</td>
-                  <td style={{ padding: '14px 12px', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#8f8ca4' }}>{step.Tokens}</td>
-                  <td style={{ padding: '14px 12px', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#8f8ca4', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={step.POSTags}>{step.POSTags}</td>
-                  <td style={{ padding: '14px 12px', fontWeight: 600, color: '#ffffff' }}>
-                    <code>{step.InferredSelector || step.selector}</code>
-                  </td>
-                  <td style={{ padding: '14px 12px', color: 'var(--secondary)', fontWeight: 600 }}>
-                    <code>
-                      {step.Action === 'goto' ? 'goto()' : step.Action === 'type' ? 'fill()' : step.Action === 'click' ? 'click()' : step.Expectation === 'url' ? 'toHaveURL()' : step.Expectation === 'visible' ? 'toBeVisible()' : 'none'}
-                    </code>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Accordion Collapsible for NLP Parsed POS Tagging Table (Developer Mode) */}
+      <div className="saas-panel" style={{ background: '#12111a', overflow: 'hidden' }}>
+        <button 
+          onClick={() => setShowDeveloperTable(!showDeveloperTable)}
+          style={{
+            width: '100%',
+            background: '#09070f',
+            border: 'none',
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'between',
+            cursor: 'pointer',
+            color: 'white',
+            outline: 'none'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexGrow: 1 }}>
+            <Table size={18} color="var(--secondary)" />
+            <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>Show POS Tagging & Token Mapping Details (Developer Mode)</span>
+          </div>
+          {showDeveloperTable ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+        </button>
+
+        {showDeveloperTable && (
+          <div style={{ padding: '24px', borderTop: '1px solid rgba(192, 179, 245, 0.05)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(192, 179, 245, 0.08)', color: 'var(--secondary)', background: '#0b0a10' }}>
+                    <th style={{ padding: '14px 12px', borderRadius: '12px 0 0 12px' }}>Step ID</th>
+                    <th style={{ padding: '14px 12px' }}>Keyword</th>
+                    <th style={{ padding: '14px 12px' }}>Text Content</th>
+                    <th style={{ padding: '14px 12px' }}>Token Extraction</th>
+                    <th style={{ padding: '14px 12px' }}>Part-of-Speech Tags</th>
+                    <th style={{ padding: '14px 12px' }}>Inferred Selector</th>
+                    <th style={{ padding: '14px 12px', borderRadius: '0 12px 12px 0' }}>Playwright Method</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeTokens.map((step, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid rgba(192, 179, 245, 0.04)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                      <td style={{ padding: '14px 12px', fontWeight: 600, color: 'var(--primary)' }}>{step.StepID || `STEP_${String(idx + 1).padStart(2, '0')}`}</td>
+                      <td style={{ padding: '14px 12px' }}>
+                        <span style={{ 
+                          fontSize: '0.75rem', 
+                          fontWeight: 'bold', 
+                          background: step.Keyword === 'Given' ? 'rgba(124,58,237,0.12)' : step.Keyword === 'When' ? 'rgba(6,182,212,0.12)' : 'rgba(236,72,153,0.12)',
+                          color: step.Keyword === 'Given' ? 'var(--secondary)' : step.Keyword === 'When' ? '#22d3ee' : '#f472b6',
+                          padding: '2px 8px',
+                          borderRadius: '12px'
+                        }}>
+                          {step.Keyword}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 12px', color: '#ffffff' }}>{step.Text || step.step}</td>
+                      <td style={{ padding: '14px 12px', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#8f8ca4' }}>{step.Tokens}</td>
+                      <td style={{ padding: '14px 12px', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#8f8ca4', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={step.POSTags}>{step.POSTags}</td>
+                      <td style={{ padding: '14px 12px', fontWeight: 600, color: '#ffffff' }}>
+                        <code>{step.InferredSelector || step.selector}</code>
+                      </td>
+                      <td style={{ padding: '14px 12px', color: 'var(--secondary)', fontWeight: 600 }}>
+                        <code>
+                          {step.Action === 'goto' ? 'goto()' : step.Action === 'type' ? 'fill()' : step.Action === 'click' ? 'click()' : step.Expectation === 'url' ? 'toHaveURL()' : step.Expectation === 'visible' ? 'toBeVisible()' : 'none'}
+                        </code>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
+
     </div>
   );
 }

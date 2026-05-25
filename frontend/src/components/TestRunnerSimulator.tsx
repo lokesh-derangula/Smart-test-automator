@@ -7,7 +7,11 @@ import {
   ChevronRight, 
   Globe, 
   CheckCircle,
-  Activity
+  Activity,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
 
 interface LogItem {
@@ -32,6 +36,16 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
   const [typedUser, setTypedUser] = useState('');
   const [typedPass, setTypedPass] = useState('');
   
+  // Checklist states
+  const [checklist, setChecklist] = useState({
+    staged: false,
+    navigating: false,
+    typing: false,
+    interacting: false,
+    asserting: false
+  });
+
+  const [showRawLogs, setShowRawLogs] = useState(false);
   const logTerminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,6 +61,15 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
     setBrowserState('blank');
     setTypedUser('');
     setTypedPass('');
+    
+    // Reset checklist
+    setChecklist({
+      staged: false,
+      navigating: false,
+      typing: false,
+      interacting: false,
+      asserting: false
+    });
 
     const eventSource = new EventSource('http://127.0.0.1:8001/api/run-test-stream');
 
@@ -56,19 +79,28 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
 
       const msg = log.msg.toLowerCase();
       
-      // Update mock browser state based on real Playwright runtime events
+      // Update checklist states dynamically based on Playwright execution
+      if (msg.includes('staged') || msg.includes('initializing') || msg.includes('playwright')) {
+        setChecklist(prev => ({ ...prev, staged: true }));
+      }
+      
       if (msg.includes('navigating') || msg.includes('goto') || msg.includes('page.goto')) {
         setBrowserUrl('https://example.com/login');
         setBrowserState('login');
+        setChecklist(prev => ({ ...prev, staged: true, navigating: true }));
       } else if (msg.includes('typing') || msg.includes('fill') || msg.includes('username')) {
         setBrowserState('typing_user');
         setTypedUser('testuser');
+        setChecklist(prev => ({ ...prev, staged: true, navigating: true, typing: true }));
       } else if (msg.includes('password') || msg.includes('secure')) {
         setBrowserState('typing_pass');
         setTypedPass('•••••••••••');
+        setChecklist(prev => ({ ...prev, staged: true, navigating: true, typing: true }));
       } else if (msg.includes('click') || msg.includes('submit')) {
         setBrowserState('submitting');
+        setChecklist(prev => ({ ...prev, staged: true, navigating: true, typing: true, interacting: true }));
       } else if (msg.includes('passed') || msg.includes('success') || msg.includes('dashboard')) {
+        setChecklist(prev => ({ ...prev, staged: true, navigating: true, typing: true, interacting: true, asserting: true }));
         setTimeout(() => {
           setBrowserUrl('https://example.com/dashboard');
           setBrowserState('dashboard');
@@ -80,6 +112,14 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
         setTimeout(() => {
           eventSource.close();
           setRunning(false);
+          // Set all checks as done on clean exit
+          setChecklist(prev => ({
+            staged: true,
+            navigating: true,
+            typing: true,
+            interacting: true,
+            asserting: true
+          }));
         }, 1000);
       }
     };
@@ -93,15 +133,8 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
-      {/* Title */}
-      <div>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Playwright Parallel Test Runner</h1>
-        <p style={{ color: '#8f8ca4', fontSize: '0.95rem', marginTop: '4px' }}>
-          Simulate parallel Playwright test execution on Chromium, Firefox, and WebKit threads directly.
-        </p>
-      </div>
-
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
+      {/* Dynamic Spec Loaded Tag */}
       {generatedSpec ? (
         <div style={{ 
           fontSize: '0.82rem', 
@@ -129,10 +162,10 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
       )}
 
       {/* Main Split */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '24px', alignItems: 'stretch' }}>
         
         {/* Left: Mock Browser */}
-        <div className="saas-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '420px', background: '#12111a' }}>
+        <div className="saas-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '380px', background: '#12111a' }}>
           {/* Header Bar */}
           <div style={{ 
             background: '#09070f', 
@@ -277,38 +310,151 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
           </div>
         </div>
 
-        {/* Right: Terminal Logs */}
-        <div className="saas-panel" style={{ display: 'flex', flexDirection: 'column', minHeight: '420px', overflow: 'hidden', background: '#12111a' }}>
-          <div style={{ 
-            background: '#09070f', 
-            padding: '12px 20px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            borderBottom: '1px solid rgba(192,179,245,0.04)' 
-          }}>
-            <Terminal size={16} color="var(--secondary)" />
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Playwright Parallel Log Streams</h3>
+        {/* Right Side: Step-by-Step Testing Checklist */}
+        <div className="saas-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '380px', background: '#12111a', padding: '24px', justifySelf: 'stretch' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>Live Automation Checklist</span>
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flexGrow: 1 }}>
+            
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <div>
+                {checklist.staged ? (
+                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
+                ) : running ? (
+                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
+                ) : (
+                  <Circle size={18} color="#4a475a" />
+                )}
+              </div>
+              <div>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.staged ? '#ffffff' : '#8f8ca4' }}>Environment Ready</h4>
+                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Stage test specifications and load Playwright framework</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <div>
+                {checklist.navigating ? (
+                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
+                ) : running && checklist.staged ? (
+                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
+                ) : (
+                  <Circle size={18} color="#4a475a" />
+                )}
+              </div>
+              <div>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.navigating ? '#ffffff' : '#8f8ca4' }}>Target Navigation</h4>
+                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Navigate Chromium/Firefox to login endpoint</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <div>
+                {checklist.typing ? (
+                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
+                ) : running && checklist.navigating ? (
+                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
+                ) : (
+                  <Circle size={18} color="#4a475a" />
+                )}
+              </div>
+              <div>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.typing ? '#ffffff' : '#8f8ca4' }}>Input Fields Populated</h4>
+                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Locate target selectors and type test parameters</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <div>
+                {checklist.interacting ? (
+                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
+                ) : running && checklist.typing ? (
+                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
+                ) : (
+                  <Circle size={18} color="#4a475a" />
+                )}
+              </div>
+              <div>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.interacting ? '#ffffff' : '#8f8ca4' }}>Buttons Interacted</h4>
+                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Execute simulated click gestures on target triggers</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <div>
+                {checklist.asserting ? (
+                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
+                ) : running && checklist.interacting ? (
+                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
+                ) : (
+                  <Circle size={18} color="#4a475a" />
+                )}
+              </div>
+              <div>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.asserting ? '#ffffff' : '#8f8ca4' }}>Assertions Verified</h4>
+                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Verify page redirect targets and state expectations</p>
+              </div>
+            </div>
+
           </div>
 
+          <button 
+            className="btn btn-gradient" 
+            onClick={runSuite}
+            disabled={running}
+            style={{ width: '100%', marginTop: '20px' }}
+          >
+            <Play size={16} />
+            <span>{running ? 'Test Execution Active...' : 'Launch Playwright Suite'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Accordion Collapsible for Raw Terminal Logs */}
+      <div className="saas-panel" style={{ background: '#12111a', overflow: 'hidden' }}>
+        <button 
+          onClick={() => setShowRawLogs(!showRawLogs)}
+          style={{
+            width: '100%',
+            background: '#09070f',
+            border: 'none',
+            padding: '14px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'between',
+            cursor: 'pointer',
+            color: 'white',
+            outline: 'none'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexGrow: 1 }}>
+            <Terminal size={16} color="var(--secondary)" />
+            <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Show Raw Playwright Terminal Logs (Developer Mode)</span>
+          </div>
+          {showRawLogs ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+        {showRawLogs && (
           <div 
             ref={logTerminalRef}
             style={{ 
-              flexGrow: 1, 
               background: '#0b0a10', 
               padding: '20px', 
               fontFamily: 'JetBrains Mono, monospace', 
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px',
-              maxHeight: '300px'
+              gap: '6px',
+              maxHeight: '220px',
+              borderTop: '1px solid rgba(192, 179, 245, 0.05)'
             }}
           >
             {logs.length === 0 && (
               <div style={{ color: '#8f8ca4', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>&gt;_ Click run below to view active Playwright test runner logs...</span>
+                <span>&gt;_ Playwright terminal is quiet. Start execution above to capture CLI outputs...</span>
               </div>
             )}
             
@@ -340,27 +486,9 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
               );
             })}
           </div>
-
-          <div style={{ 
-            padding: '16px', 
-            background: '#09070f', 
-            borderTop: '1px solid rgba(192, 179, 245, 0.04)',
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'center'
-          }}>
-            <button 
-              className="btn btn-white" 
-              onClick={runSuite}
-              disabled={running}
-              style={{ flexGrow: 1 }}
-            >
-              <Play size={16} />
-              <span>Execute Playwright Suite (Parallel)</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
+
     </div>
   );
 }
