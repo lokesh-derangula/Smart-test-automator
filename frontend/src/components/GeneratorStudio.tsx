@@ -936,7 +936,11 @@ Created automatically with SpecFlowAI BDD & Playwright Test Studio.
           </div>
 
           {/* Embedded runner */}
-          <TestRunnerSimulator generatedSpec={generatedSpec} />
+          <TestRunnerSimulator 
+            generatedSpec={generatedSpec} 
+            featureName={featureName}
+            steps={parsedSteps}
+          />
 
           {/* Navigation Controls */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>

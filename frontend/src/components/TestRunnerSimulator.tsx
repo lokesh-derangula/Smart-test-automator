@@ -11,7 +11,11 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
-  Circle
+  Circle,
+  ShoppingBag,
+  UserPlus,
+  LogIn,
+  Layers
 } from 'lucide-react';
 
 interface LogItem {
@@ -25,9 +29,11 @@ interface TestRunnerSimulatorProps {
     specCode: string;
     pageCode: string;
   } | null;
+  featureName?: string;
+  steps?: any[];
 }
 
-export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulatorProps) {
+export default function TestRunnerSimulator({ generatedSpec, featureName = "User Login", steps = [] }: TestRunnerSimulatorProps) {
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState<LogItem[]>([]);
   
@@ -36,23 +42,83 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
   const [typedUser, setTypedUser] = useState('');
   const [typedPass, setTypedPass] = useState('');
   
-  // Checklist states
-  const [checklist, setChecklist] = useState({
-    staged: false,
-    navigating: false,
-    typing: false,
-    interacting: false,
-    asserting: false
-  });
+  // Checklist dynamic checked step index
+  const [checkedCount, setCheckedCount] = useState(0);
 
   const [showRawLogs, setShowRawLogs] = useState(false);
   const logTerminalRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic flow determination based on featureName
+  const getFlowType = () => {
+    const name = featureName.toLowerCase();
+    if (name.includes('signup') || name.includes('register') || name.includes('registration')) {
+      return 'signup';
+    }
+    if (name.includes('cart') || name.includes('checkout') || name.includes('purchase') || name.includes('shop') || name.includes('order')) {
+      return 'cart';
+    }
+    return 'login'; // default
+  };
+
+  const flowType = getFlowType();
+
+  // Fallback default checklist steps if none compiled yet
+  const getDefaultSteps = () => {
+    if (flowType === 'signup') {
+      return [
+        { keyword: 'Given', step: 'the user is on the signup page', action: 'goto', expectation: 'none' },
+        { keyword: 'When', step: 'the user enters a new email address', action: 'type', expectation: 'none' },
+        { keyword: 'And', step: 'enters a secure password and confirms it', action: 'type', expectation: 'none' },
+        { keyword: 'And', step: 'clicks the "Sign Up" button', action: 'click', expectation: 'none' },
+        { keyword: 'Then', step: 'the user should see the welcome banner', action: 'none', expectation: 'visible' }
+      ];
+    }
+    if (flowType === 'cart') {
+      return [
+        { keyword: 'Given', step: 'the user is on the product detail page', action: 'goto', expectation: 'none' },
+        { keyword: 'When', step: 'the user clicks the "Add to Cart" button', action: 'click', expectation: 'none' },
+        { keyword: 'And', step: 'clicks the "Checkout" button', action: 'click', expectation: 'none' },
+        { keyword: 'And', step: 'enters "123 Main St" in the shipping address', action: 'type', expectation: 'none' },
+        { keyword: 'Then', step: 'the user should see the order confirmation details', action: 'none', expectation: 'visible' }
+      ];
+    }
+    return [
+      { keyword: 'Given', step: 'the user is on the login page', action: 'goto', expectation: 'none' },
+      { keyword: 'When', step: 'the user enters "testuser" in username field', action: 'type', expectation: 'none' },
+      { keyword: 'And', step: 'enters "password123" in password field', action: 'type', expectation: 'none' },
+      { keyword: 'And', step: 'clicks the login button', action: 'click', expectation: 'none' },
+      { keyword: 'Then', step: 'the user should be redirected to the dashboard', action: 'none', expectation: 'url' }
+    ];
+  };
+
+  const activeStepsList = steps && steps.length > 0 ? steps : getDefaultSteps();
+
+  const getStartUrl = () => {
+    if (flowType === 'signup') return 'https://example.com/signup';
+    if (flowType === 'cart') return 'https://example.com/shop/product/headphones';
+    return 'https://example.com/login';
+  };
+
+  const getRedirectUrl = () => {
+    if (flowType === 'signup') return 'https://example.com/dashboard?welcome=newuser';
+    if (flowType === 'cart') return 'https://example.com/shop/checkout/confirmation';
+    return 'https://example.com/dashboard';
+  };
 
   useEffect(() => {
     if (logTerminalRef.current) {
       logTerminalRef.current.scrollTop = logTerminalRef.current.scrollHeight;
     }
   }, [logs]);
+
+  // Keep state reset when steps or generatedSpec changes
+  useEffect(() => {
+    setBrowserUrl('about:blank');
+    setBrowserState('blank');
+    setTypedUser('');
+    setTypedPass('');
+    setCheckedCount(0);
+  }, [featureName, generatedSpec]);
 
   const runSuite = () => {
     setRunning(true);
@@ -61,15 +127,7 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
     setBrowserState('blank');
     setTypedUser('');
     setTypedPass('');
-    
-    // Reset checklist
-    setChecklist({
-      staged: false,
-      navigating: false,
-      typing: false,
-      interacting: false,
-      asserting: false
-    });
+    setCheckedCount(0);
 
     const eventSource = new EventSource('http://127.0.0.1:8001/api/run-test-stream');
 
@@ -79,47 +137,41 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
 
       const msg = log.msg.toLowerCase();
       
-      // Update checklist states dynamically based on Playwright execution
-      if (msg.includes('staged') || msg.includes('initializing') || msg.includes('playwright')) {
-        setChecklist(prev => ({ ...prev, staged: true }));
-      }
-      
+      // Update checklist progress and browser states dynamically
       if (msg.includes('navigating') || msg.includes('goto') || msg.includes('page.goto')) {
-        setBrowserUrl('https://example.com/login');
+        setBrowserUrl(getStartUrl());
         setBrowserState('login');
-        setChecklist(prev => ({ ...prev, staged: true, navigating: true }));
-      } else if (msg.includes('typing') || msg.includes('fill') || msg.includes('username')) {
-        setBrowserState('typing_user');
-        setTypedUser('testuser');
-        setChecklist(prev => ({ ...prev, staged: true, navigating: true, typing: true }));
-      } else if (msg.includes('password') || msg.includes('secure')) {
-        setBrowserState('typing_pass');
-        setTypedPass('•••••••••••');
-        setChecklist(prev => ({ ...prev, staged: true, navigating: true, typing: true }));
-      } else if (msg.includes('click') || msg.includes('submit')) {
+        advanceChecklist('goto');
+      } else if (msg.includes('typing') || msg.includes('fill') || msg.includes('username') || msg.includes('email') || msg.includes('address') || msg.includes('password')) {
+        if (msg.includes('username') || msg.includes('email') || msg.includes('emailinput')) {
+          setBrowserState('typing_user');
+          setTypedUser(flowType === 'signup' ? 'newuser@example.com' : 'testuser');
+          advanceChecklist('type');
+        } else if (msg.includes('password') || msg.includes('passwordinput')) {
+          setBrowserState('typing_pass');
+          setTypedPass('•••••••••••');
+          advanceChecklist('type');
+        } else {
+          // address or fallback input fields
+          setBrowserState('typing_user');
+          setTypedUser(flowType === 'cart' ? '123 Main St' : 'testuser');
+          advanceChecklist('type');
+        }
+      } else if (msg.includes('click') || msg.includes('submit') || msg.includes('add to cart') || msg.includes('checkout')) {
         setBrowserState('submitting');
-        setChecklist(prev => ({ ...prev, staged: true, navigating: true, typing: true, interacting: true }));
-      } else if (msg.includes('passed') || msg.includes('success') || msg.includes('dashboard')) {
-        setChecklist(prev => ({ ...prev, staged: true, navigating: true, typing: true, interacting: true, asserting: true }));
-        setTimeout(() => {
-          setBrowserUrl('https://example.com/dashboard');
-          setBrowserState('dashboard');
-        }, 300);
+        advanceChecklist('click');
+      } else if (msg.includes('passed') || msg.includes('success') || msg.includes('dashboard') || msg.includes('confirmation')) {
+        setBrowserUrl(getRedirectUrl());
+        setBrowserState('dashboard');
+        setCheckedCount(activeStepsList.length); // complete all checklist items
       }
 
-      // Automatically stop runner when process completes or all tests pass
+      // Automatically stop runner when process completes
       if (msg.includes('finished') || msg.includes('exited with code') || (msg.includes('passed') && msg.includes('('))) {
         setTimeout(() => {
           eventSource.close();
           setRunning(false);
-          // Set all checks as done on clean exit
-          setChecklist(prev => ({
-            staged: true,
-            navigating: true,
-            typing: true,
-            interacting: true,
-            asserting: true
-          }));
+          setCheckedCount(activeStepsList.length);
         }, 1000);
       }
     };
@@ -132,8 +184,26 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
     };
   };
 
+  const advanceChecklist = (actionType: 'goto' | 'type' | 'click') => {
+    setCheckedCount(prev => {
+      // Find the next unchecked step that corresponds to this action
+      for (let i = prev; i < activeStepsList.length; i++) {
+        const step = activeStepsList[i];
+        const stepAction = (step.action || step.Action || '').toLowerCase();
+        
+        // If the action matches, check up to this step
+        if (stepAction === actionType || (actionType === 'type' && stepAction === 'fill')) {
+          return i + 1;
+        }
+      }
+      // Fallback: just advance by 1 step if actions don't map cleanly
+      return Math.min(prev + 1, activeStepsList.length);
+    });
+  };
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
+      
       {/* Dynamic Spec Loaded Tag */}
       {generatedSpec ? (
         <div style={{ 
@@ -162,10 +232,10 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
       )}
 
       {/* Main Split */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '24px', alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'stretch' }}>
         
         {/* Left: Mock Browser */}
-        <div className="saas-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '380px', background: '#12111a' }}>
+        <div className="saas-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '400px', background: '#12111a' }}>
           {/* Header Bar */}
           <div style={{ 
             background: '#09070f', 
@@ -219,7 +289,7 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
             </span>
           </div>
 
-          {/* Web page area */}
+          {/* Web page area rendering dynamic screens based on Flow Type */}
           <div style={{ 
             flexGrow: 1, 
             background: '#0b0a10', 
@@ -237,9 +307,13 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
               </div>
             )}
 
-            {(browserState === 'login' || browserState === 'typing_user' || browserState === 'typing_pass' || browserState === 'submitting') && (
+            {/* FLOW 1: LOGIN FLOW */}
+            {flowType === 'login' && (browserState === 'login' || browserState === 'typing_user' || browserState === 'typing_pass' || browserState === 'submitting') && (
               <div className="saas-panel animate-fade-in" style={{ padding: '24px', width: '100%', maxWidth: '280px', background: '#12111a', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 800, textAlign: 'center', color: '#ffffff' }}>Portal Log In</h3>
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, textAlign: 'center', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <LogIn size={16} color="var(--secondary)" />
+                  <span>Portal Log In</span>
+                </h3>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={{ fontSize: '0.7rem', color: '#8f8ca4', fontWeight: 600 }}>Username</label>
@@ -286,7 +360,7 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
               </div>
             )}
 
-            {browserState === 'dashboard' && (
+            {flowType === 'login' && browserState === 'dashboard' && (
               <div className="saas-panel animate-fade-in" style={{ padding: '24px', width: '100%', maxWidth: '340px', background: '#12111a', borderColor: 'var(--success)', display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center', boxShadow: '0 10px 30px rgba(16,185,129,0.05)' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', color: 'var(--success)' }}>
                   <CheckCircle size={22} />
@@ -307,96 +381,234 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
                 </div>
               </div>
             )}
+
+            {/* FLOW 2: SIGNUP FLOW */}
+            {flowType === 'signup' && (browserState === 'login' || browserState === 'typing_user' || browserState === 'typing_pass' || browserState === 'submitting') && (
+              <div className="saas-panel animate-fade-in" style={{ padding: '24px', width: '100%', maxWidth: '280px', background: '#12111a', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, textAlign: 'center', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <UserPlus size={16} color="var(--secondary)" />
+                  <span>Create Account</span>
+                </h3>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.7rem', color: '#8f8ca4', fontWeight: 600 }}>Email Address</label>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={typedUser} 
+                    placeholder="name@domain.com"
+                    className="input-field"
+                    style={{ 
+                      padding: '8px 12px', 
+                      fontSize: '0.8rem',
+                      borderColor: browserState === 'typing_user' ? 'var(--secondary)' : 'rgba(192,179,245,0.08)'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.7rem', color: '#8f8ca4', fontWeight: 600 }}>Password</label>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={typedPass} 
+                    className="input-field"
+                    style={{ 
+                      padding: '8px 12px', 
+                      fontSize: '0.8rem',
+                      borderColor: browserState === 'typing_pass' ? 'var(--secondary)' : 'rgba(192,179,245,0.08)'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.7rem', color: '#8f8ca4', fontWeight: 600 }}>Confirm Password</label>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={typedPass} 
+                    className="input-field"
+                    style={{ 
+                      padding: '8px 12px', 
+                      fontSize: '0.8rem',
+                      borderColor: browserState === 'typing_pass' ? 'var(--secondary)' : 'rgba(192,179,245,0.08)'
+                    }}
+                  />
+                </div>
+
+                <button 
+                  className="btn btn-white" 
+                  disabled 
+                  style={{ 
+                    padding: '10px', 
+                    fontSize: '0.8rem',
+                    boxShadow: 'none',
+                    opacity: browserState === 'submitting' ? 0.75 : 1
+                  }}
+                >
+                  {browserState === 'submitting' ? 'Creating account...' : 'Register Account'}
+                </button>
+              </div>
+            )}
+
+            {flowType === 'signup' && browserState === 'dashboard' && (
+              <div className="saas-panel animate-fade-in" style={{ padding: '24px', width: '100%', maxWidth: '340px', background: '#12111a', borderColor: 'var(--success)', display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center', boxShadow: '0 10px 30px rgba(16,185,129,0.05)' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', color: 'var(--success)' }}>
+                  <CheckCircle size={22} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>🎉 Account Created!</h3>
+                  <p style={{ color: '#8f8ca4', fontSize: '0.78rem', marginTop: '6px' }}>Your new profile is fully registered and activated.</p>
+                </div>
+                <div style={{ background: '#0b0a10', padding: '12px', borderRadius: '12px', border: '1px solid rgba(192,179,245,0.04)', fontSize: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: '#8f8ca4' }}>Member Level:</span>
+                    <strong style={{ color: 'var(--secondary)' }}>Free Starter Tier</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#8f8ca4' }}>Username ID:</span>
+                    <strong style={{ color: '#ffffff' }}>newuser@example.com</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* FLOW 3: CART CHECKOUT FLOW */}
+            {flowType === 'cart' && (browserState === 'login' || browserState === 'typing_user' || browserState === 'typing_pass' || browserState === 'submitting') && (
+              <div className="saas-panel animate-fade-in" style={{ padding: '20px', width: '100%', maxWidth: '300px', background: '#12111a', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h3 style={{ fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', color: '#ffffff' }}>
+                  <ShoppingBag size={16} color="var(--secondary)" />
+                  <span>SaaS Store Checkout</span>
+                </h3>
+                
+                {/* Product Detail Stage */}
+                {(browserState === 'login') && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'center', padding: '10px 0' }}>
+                    <div style={{ height: '80px', borderRadius: '12px', background: 'rgba(192,179,245,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ShoppingBag size={32} color="var(--secondary)" />
+                    </div>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Wireless Headphones XL</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 800 }}>$49.99</span>
+                    <button className="btn btn-white" disabled style={{ padding: '8px', fontSize: '0.75rem' }}>Add to Cart</button>
+                  </div>
+                )}
+
+                {/* Cart View Stage */}
+                {(browserState === 'typing_user' && typedUser !== '123 Main St') && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', background: '#0b0a10', padding: '10px', borderRadius: '10px' }}>
+                      <span>Wireless Headphones</span>
+                      <strong>$49.99 (1x)</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '6px' }}>
+                      <span>Total:</span>
+                      <span style={{ color: 'var(--success)' }}>$49.99</span>
+                    </div>
+                    <button className="btn btn-gradient" disabled style={{ padding: '8px', fontSize: '0.75rem', width: '100%' }}>Checkout ➔</button>
+                  </div>
+                )}
+
+                {/* Address Input Stage */}
+                {((browserState === 'typing_user' && typedUser === '123 Main St') || browserState === 'typing_pass' || browserState === 'submitting') && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.7rem', color: '#8f8ca4', fontWeight: 600 }}>Shipping Address</label>
+                      <input 
+                        type="text" 
+                        readOnly
+                        value={typedUser === '123 Main St' ? typedUser : '123 Main St'} 
+                        placeholder="Enter street address"
+                        className="input-field"
+                        style={{ padding: '8px', fontSize: '0.75rem', borderColor: 'var(--secondary)' }}
+                      />
+                    </div>
+                    
+                    <button 
+                      className="btn btn-gradient" 
+                      disabled 
+                      style={{ 
+                        padding: '10px', 
+                        fontSize: '0.75rem',
+                        opacity: browserState === 'submitting' ? 0.75 : 1
+                      }}
+                    >
+                      {browserState === 'submitting' ? 'Processing Order...' : 'Place Order'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {flowType === 'cart' && browserState === 'dashboard' && (
+              <div className="saas-panel animate-fade-in" style={{ padding: '24px', width: '100%', maxWidth: '340px', background: '#12111a', borderColor: 'var(--success)', display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center', boxShadow: '0 10px 30px rgba(16,185,129,0.05)' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', color: 'var(--success)' }}>
+                  <CheckCircle size={22} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>✅ Order Confirmed!</h3>
+                  <p style={{ color: '#8f8ca4', fontSize: '0.78rem', marginTop: '6px' }}>Thank you for your purchase. Your transaction completed successfully.</p>
+                </div>
+                <div style={{ background: '#0b0a10', padding: '12px', borderRadius: '12px', border: '1px solid rgba(192,179,245,0.04)', fontSize: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: '#8f8ca4' }}>Order Reference ID:</span>
+                    <strong style={{ color: '#ffffff' }}>#SPF-99482</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#8f8ca4' }}>Delivery Speed:</span>
+                    <strong style={{ color: 'var(--success)' }}>3-5 Business Days</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
 
         {/* Right Side: Step-by-Step Testing Checklist */}
-        <div className="saas-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '380px', background: '#12111a', padding: '24px', justifySelf: 'stretch' }}>
+        <div className="saas-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '400px', background: '#12111a', padding: '24px', justifySelf: 'stretch' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Layers size={18} color="var(--secondary)" />
             <span>Live Automation Checklist</span>
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flexGrow: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1, overflowY: 'auto', maxHeight: '280px', paddingRight: '4px' }}>
             
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-              <div>
-                {checklist.staged ? (
-                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
-                ) : running ? (
-                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
-                ) : (
-                  <Circle size={18} color="#4a475a" />
-                )}
-              </div>
-              <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.staged ? '#ffffff' : '#8f8ca4' }}>Environment Ready</h4>
-                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Stage test specifications and load Playwright framework</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-              <div>
-                {checklist.navigating ? (
-                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
-                ) : running && checklist.staged ? (
-                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
-                ) : (
-                  <Circle size={18} color="#4a475a" />
-                )}
-              </div>
-              <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.navigating ? '#ffffff' : '#8f8ca4' }}>Target Navigation</h4>
-                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Navigate Chromium/Firefox to login endpoint</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-              <div>
-                {checklist.typing ? (
-                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
-                ) : running && checklist.navigating ? (
-                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
-                ) : (
-                  <Circle size={18} color="#4a475a" />
-                )}
-              </div>
-              <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.typing ? '#ffffff' : '#8f8ca4' }}>Input Fields Populated</h4>
-                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Locate target selectors and type test parameters</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-              <div>
-                {checklist.interacting ? (
-                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
-                ) : running && checklist.typing ? (
-                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
-                ) : (
-                  <Circle size={18} color="#4a475a" />
-                )}
-              </div>
-              <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.interacting ? '#ffffff' : '#8f8ca4' }}>Buttons Interacted</h4>
-                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Execute simulated click gestures on target triggers</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-              <div>
-                {checklist.asserting ? (
-                  <CheckCircle2 size={20} color="var(--success)" className="animate-fade-in" />
-                ) : running && checklist.interacting ? (
-                  <Activity size={18} color="var(--secondary)" className="animate-spin" />
-                ) : (
-                  <Circle size={18} color="#4a475a" />
-                )}
-              </div>
-              <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: checklist.asserting ? '#ffffff' : '#8f8ca4' }}>Assertions Verified</h4>
-                <p style={{ color: '#8f8ca4', fontSize: '0.75rem', marginTop: '2px' }}>Verify page redirect targets and state expectations</p>
-              </div>
-            </div>
+            {activeStepsList.map((step, idx) => {
+              const isChecked = idx < checkedCount;
+              const isCurrent = idx === checkedCount && running;
+              
+              return (
+                <div key={idx} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }} className="animate-fade-in">
+                  <div style={{ marginTop: '2px' }}>
+                    {isChecked ? (
+                      <CheckCircle2 size={18} color="var(--success)" className="animate-fade-in" />
+                    ) : isCurrent ? (
+                      <Activity size={16} color="var(--secondary)" className="animate-spin" />
+                    ) : (
+                      <Circle size={16} color="#4a475a" />
+                    )}
+                  </div>
+                  <div>
+                    <h4 style={{ 
+                      fontSize: '0.85rem', 
+                      fontWeight: 700, 
+                      color: isChecked ? '#ffffff' : (isCurrent ? 'var(--secondary)' : '#8f8ca4'),
+                      textDecoration: isChecked ? 'line-through' : 'none',
+                      opacity: isChecked ? 0.75 : 1
+                    }}>
+                      <span style={{ 
+                        color: step.keyword === 'Given' ? 'var(--secondary)' : step.keyword === 'When' ? '#22d3ee' : '#f472b6', 
+                        fontWeight: 'bold',
+                        marginRight: '6px'
+                      }}>
+                        {step.keyword}
+                      </span>
+                      {step.step}
+                    </h4>
+                  </div>
+                </div>
+              );
+            })}
 
           </div>
 
@@ -404,7 +616,7 @@ export default function TestRunnerSimulator({ generatedSpec }: TestRunnerSimulat
             className="btn btn-gradient" 
             onClick={runSuite}
             disabled={running}
-            style={{ width: '100%', marginTop: '20px' }}
+            style={{ width: '100%', marginTop: '20px', padding: '12px' }}
           >
             <Play size={16} />
             <span>{running ? 'Test Execution Active...' : 'Launch Playwright Suite'}</span>
