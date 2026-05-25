@@ -4,7 +4,7 @@ import json
 import asyncio
 import zipfile
 import subprocess
-from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Response
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
@@ -29,9 +29,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def home():
-    return {"message": "Spec-Flow-AI Backend Running Successfully"}
+@app.api_route("/", methods=["GET", "HEAD"])
+async def home(request: Request):
+    return {"message": "Spec-Flow-AI Backend Running"}
 
 parser = NLPParser()
 generator = POMGenerator()
