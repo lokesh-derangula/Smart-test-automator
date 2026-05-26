@@ -101,10 +101,6 @@ export default function App() {
           ))}
         </nav>
 
-        {/* Right Side: Quick info tag */}
-        <div className="saas-auth-group" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>
-          <span>PORT: <strong style={{ color: 'var(--success)' }}>8001 (ACTIVE)</strong></span>
-        </div>
       </header>
 
       {/* Main App Body */}

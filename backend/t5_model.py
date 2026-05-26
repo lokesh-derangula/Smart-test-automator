@@ -92,40 +92,39 @@ class T5FineTuner:
     def generate(self, story: str, fallback_parser) -> str:
         """
         Translates a User Story to Gherkin format using the T5 model.
-        Uses a hybrid approach: translates via T5, then cleans/structures
-        using a fallback rule-based parser if the output lacks Gherkin markers.
+        Only loads and runs T5 if trained, otherwise uses the rule-based parser fallback.
         """
-        self.load_model()
-        
-        # Load saved weights if they exist
-        if os.path.exists(self.weights_path) and not self.is_trained:
+        # Only load and use T5 model if it has been trained/fine-tuned or local weights exist
+        if self.is_trained or os.path.exists(self.weights_path):
             try:
-                self.model.load_state_dict(torch.load(self.weights_path, map_location=torch.device('cpu')))
-                self.is_trained = True
-            except Exception as e:
-                print(f"Error loading T5 weights: {e}")
+                self.load_model()
                 
-        # Run inference
-        input_str = "translate Story to Gherkin: " + story
-        input_ids = self.tokenizer.encode(input_str, return_tensors="pt")
-        
-        self.model.eval()
-        with torch.no_grad():
-            outputs = self.model.generate(
-                input_ids,
-                max_length=256,
-                num_beams=2,
-                early_stopping=True
-            )
-            
-        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Hybrid cleaning: if generated text lacks clear BDD structure (Given/When/Then),
-        # use the fallback parser to structure it properly.
-        has_gherkin_keywords = any(kw in generated_text for kw in ["Given", "When", "Then", "Scenario:", "Feature:"])
-        
-        if not has_gherkin_keywords:
-            # Fallback to structuring Gherkin from the user story
-            return fallback_parser.to_gherkin(story, generated_text or story)
-            
-        return generated_text
+                # Load saved weights if they exist and model is not marked trained
+                if os.path.exists(self.weights_path) and not self.is_trained:
+                    self.model.load_state_dict(torch.load(self.weights_path, map_location=torch.device('cpu')))
+                    self.is_trained = True
+
+                # Run T5 inference
+                input_str = "translate Story to Gherkin: " + story
+                input_ids = self.tokenizer.encode(input_str, return_tensors="pt")
+                
+                self.model.eval()
+                with torch.no_grad():
+                    outputs = self.model.generate(
+                        input_ids,
+                        max_length=256,
+                        num_beams=2,
+                        early_stopping=True
+                    )
+                    
+                generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                has_gherkin_keywords = any(kw in generated_text for kw in ["Given", "When", "Then", "Scenario:", "Feature:"])
+                
+                if has_gherkin_keywords:
+                    return generated_text
+            except Exception as e:
+                print(f"T5 generation error: {e}")
+
+        # Fallback to structuring Gherkin from the user story instantly
+        parsed = fallback_parser.parse_user_story(story)
+        return fallback_parser.to_gherkin(story, parsed.get("feature", "Verify Acceptance Criteria"))
