@@ -1,4 +1,6 @@
 import os
+os.environ["HF_HOME"] = os.getenv("HF_HOME", "/app/hf_cache")
+
 import torch
 import pandas as pd
 from transformers import T5ForConditionalGeneration, T5Tokenizer
